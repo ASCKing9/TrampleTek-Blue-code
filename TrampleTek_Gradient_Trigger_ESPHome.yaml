@@ -1,33 +1,35 @@
-esphome:
-  name: [Your internal devices name]
-  friendly_name: [The name you gave the device]
+# esphome:
+#   name: [Your internal devices name]
+#   friendly_name: [The name you gave the device]
 
-esp32:
-  board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
+# esp32:
+#   board: esp32-c3-devkitm-1
+#   framework:
+#     type: arduino
 
-# Enable logging
-logger:
+# # Enable logging
+# logger:
 
-# Enable Home Assistant API
-api:
-  encryption:
-    key: "[The encryption key that you set up, if you installed it]"
-ota:
+# # Enable Home Assistant API
+# api:
+#   encryption:
+#     key: "[The encryption key that you set up, if you installed it]"
+# ota:
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+# wifi:
+#   ssid: !secret wifi_ssid
+#   password: !secret wifi_password
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "[your devices wifi]"
-    password: "[your device password]"
+#   # Enable fallback hotspot (captive portal) in case wifi connection fails
+#   ap:
+#     ssid: "[your devices wifi]"
+#     password: "[your device password]"
 
-captive_portal:
+# captive_portal:
 
-### Above this line is the default ESPHome config. Once you get a fresh ESPHome install, paste the code below this line
+### Above this line is a typical default ESPHome config.
+### You don't need to copy the code above, it is there as reference.
+### You only need to paste the code below 
 
 globals:
   - id: adc_readings
