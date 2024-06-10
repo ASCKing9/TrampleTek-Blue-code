@@ -59,7 +59,7 @@ sensor:
     internal: True
     filters:
       - sliding_window_moving_average:
-          window_size: 3
+          window_size: 5
           send_every: 1  
     on_value_range:
       - below: !lambda return id(step_on_threshold);
@@ -70,11 +70,13 @@ sensor:
                 id(pressure_toggle).toggle();
               }
               id(on_going_mat_event) = true;
+              id(visible_pressure_voltage).publish_state(id(pressure_adc_voltage).state);
       - above: !lambda return id(step_off_threshold);
         then:
           - lambda: |-
               id(pressure_trigger).turn_off();
-              id(on_going_mat_event) = false;
+              id(on_going_mat_event) = false;    
+              id(visible_pressure_voltage).publish_state(id(pressure_adc_voltage).state);  
           
   - platform: template
     name: "Pressure Voltage"
@@ -83,7 +85,10 @@ sensor:
     icon: "mdi:sine-wave"
     accuracy_decimals: 2
     update_interval: 1s
-    lambda: return id(pressure_adc_voltage).state;
+    lambda: !lambda |-
+      id(step_detect_on_input).publish_state(id(step_on_threshold));
+      id(step_detect_off_input).publish_state(id(step_off_threshold));
+      return id(pressure_adc_voltage).state;
 
 number:
   - platform: template
