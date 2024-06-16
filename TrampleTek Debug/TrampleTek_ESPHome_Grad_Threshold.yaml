@@ -30,15 +30,16 @@
 ### Above this line is a typical default ESPHome config.
 ### You don't need to copy the code above, it is there as reference.
 ### You only need to paste the code below 
+
 globals:
   - id: step_event_threshold
     type: float
     restore_value: yes
-    initial_value: '0.08'
+    initial_value: '0.15'
   - id: matGradientReq
     type: float
-    restore_value: yes
-    initial_value: '0.12'
+    restore_value: no
+    initial_value: '0.1'
 
 sensor:
   - platform: adc
@@ -94,7 +95,7 @@ sensor:
                 matUpThresholdLock = false;
               }
               if (matUpThresholdLock == false) {
-                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * 0.3; // Recovery can be slower, reduces the threshold requirement
+                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * 0.5;
                 matDownThreshold = id(pressure_adc_voltage).state - 1.0;
                 matUpThresholdLock = true;
                 matUpThresholdCounter = currentTime;
@@ -125,6 +126,8 @@ sensor:
               }
             }
 
+            //id(variable_viz1).publish_state(matDownThreshold);
+            //id(variable_viz2).publish_state(matUpThreshold);
             justFlippedOn = false;
             justFlippedOff = false;
 
@@ -138,6 +141,7 @@ sensor:
               id(pressure_trigger).turn_off();
             }
 
+            //id(gradient_viz).publish_state(matGradient);
             previous_adc_voltage = id(pressure_adc_voltage).state;
             
 
@@ -149,45 +153,66 @@ sensor:
     accuracy_decimals: 2
     update_interval: 1s
     lambda: |-
+      id(step_threshold_number).publish_state(id(step_event_threshold));
+      id(gradient_requirement_number).publish_state(id(matGradientReq));
       return id(pressure_adc_voltage).state;
 
-select:
+  # - platform: template
+  #   name: "Gradient viz"
+  #   id: gradient_viz
+  #   unit_of_measurement: "V/s"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+  
+  # - platform: template
+  #   name: "viz thresholdDown"
+  #   id: variable_viz1
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 2
+
+  # - platform: template
+  #   name: "viz thresholdUp"
+  #   id: variable_viz2
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 2
+
+number:
   - platform: template
-    name: Sensitivity Selector
-    id: mat_sensitivity_select
-    options:
-     - "Very light pressure (may cause false triggering)" # step_event_threshold = 0.06, matGradientReq = 0.04
-     - "Light pressure" # step_event_threshold = 0.12, matGradientReq = 0.08
-     - "Medium pressure" # step_event_threshold = 0.24, matGradientReq = 0.16
-     - "Heavy pressure" # step_event_threshold = 0.48, matGradientReq = 0.20
-     - "Very Heavy pressure" # step_event_threshold = 0.70, matGradientReq = 0.25
-    initial_option: "Light pressure"
-    optimistic: true
-    restore_value: true
+    name: "Gradient requirement"
+    id: gradient_requirement_number
+    unit_of_measurement: "V/s"
+    update_interval: never
+    initial_value: '0.2'
+    min_value: 0.02
+    max_value: 0.6
+    step: 0.02
+    optimistic: True
     on_value:
       then:
-        - lambda: |-
-            if (x == "Very light pressure") {
-              id(step_event_threshold) = 0.06;
-              id(matGradientReq) = 0.04;
-            } else if (x == "Light pressure") {
-              id(step_event_threshold) = 0.12;
-              id(matGradientReq) = 0.08;
-            } else if (x == "Medium pressure") {
-              id(step_event_threshold) = 0.24;
-              id(matGradientReq) = 0.16;
-            } else if (x == "Heavy pressure") {
-              id(step_event_threshold) = 0.48;
-              id(matGradientReq) = 0.20;
-            } else if (x == "Very Heavy pressure") {
-              id(step_event_threshold) = 0.70;
-              id(matGradientReq) = 0.25;
-            }
-    
+        - globals.set:
+            id: matGradientReq
+            value: !lambda "return x;"
+   
+  - platform: template
+    name: "Step Threshold"
+    id: step_threshold_number
+    unit_of_measurement: "V"
+    update_interval: never
+    initial_value: '0.2'
+    min_value: 0.02
+    max_value: 0.5
+    step: 0.02
+    optimistic: True
+    on_value:
+      then:
+        - globals.set:
+            id: step_event_threshold
+            value: !lambda "return x;"
 
 switch:
   - platform: template
     name: "Mat Trigger"
     id: pressure_trigger
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
