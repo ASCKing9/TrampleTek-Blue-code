@@ -94,7 +94,7 @@ sensor:
                 matUpThresholdLock = false;
               }
               if (matUpThresholdLock == false) {
-                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * 0.3; // Recovery can be slower, reduces the threshold requirement
+                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * 0.5; // Recovery can be slower, reduces the threshold requirement
                 matDownThreshold = id(pressure_adc_voltage).state - 1.0;
                 matUpThresholdLock = true;
                 matUpThresholdCounter = currentTime;
