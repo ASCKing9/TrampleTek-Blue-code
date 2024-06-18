@@ -74,12 +74,12 @@ sensor:
             unsigned long currentTime = millis();
             float matGradient = (id(pressure_adc_voltage).state - previous_adc_voltage) / 0.075;
 
+            if (matDownThresholdLock == true && justFlippedOff == true) {
+              matDownThresholdLock = false;
+            }
             if (matGradient < -1 * id(matGradientReq)) {
                 matGradientDownApproved = true;
                 matGradientDownCounter = currentTime;
-                if (matDownThresholdLock == true && justFlippedOff == true) {
-                  matDownThresholdLock = false;
-                }
                 if (matDownThresholdLock == false) {
                   matDownThreshold = id(pressure_adc_voltage).state - id(step_event_threshold);
                   matUpThreshold = id(pressure_adc_voltage).state + 1.0;
@@ -88,14 +88,23 @@ sensor:
                 }
             }
 
+            if (matUpThresholdLock == true && justFlippedOn == true) {
+              matUpThresholdLock = false;
+            }
+
             if (matGradient > id(matGradientReq)) {
               matGradientUpApproved = true;
               matGradientUpCounter = currentTime;
-              if (matUpThresholdLock == true && justFlippedOn == true) {
-                matUpThresholdLock = false;
-              }
               if (matUpThresholdLock == false) {
-                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * 0.5;
+                float scaleThreshold;
+                if (id(step_event_threshold) < 0.2) {
+                  scaleThreshold = 0.7;
+                } else if (id(step_event_threshold) < 0.5) {
+                  scaleThreshold = 0.5;
+                } else {
+                  scaleThreshold = 0.3;
+                }
+                matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
                 matDownThreshold = id(pressure_adc_voltage).state - 1.0;
                 matUpThresholdLock = true;
                 matUpThresholdCounter = currentTime;
