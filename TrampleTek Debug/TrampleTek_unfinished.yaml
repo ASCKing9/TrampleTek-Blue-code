@@ -1,35 +1,4 @@
-# esphome:
-#   name: [Your internal devices name]
-#   friendly_name: [The name you gave the device]
-
-# esp32:
-#   board: esp32-c3-devkitm-1
-#   framework:
-#     type: arduino
-
-# # Enable logging
-# logger:
-
-# # Enable Home Assistant API
-# api:
-#   encryption:
-#     key: "[The encryption key that you set up, if you installed it]"
-# ota:
-
-# wifi:
-#   ssid: !secret wifi_ssid
-#   password: !secret wifi_password
-
-#   # Enable fallback hotspot (captive portal) in case wifi connection fails
-#   ap:
-#     ssid: "[your devices wifi]"
-#     password: "[your device password]"
-
-# captive_portal:
-
-### Above this line is a typical default ESPHome config.
-### You don't need to copy the code above, it is there as reference.
-### You only need to paste the code below 
+### Above this line is the default ESPHome config. Once you get a fresh ESPHome install, paste the code below this line
 globals:
   - id: step_event_threshold
     type: float
@@ -198,6 +167,41 @@ sensor:
     update_interval: 500ms
     lambda: |-
       return id(matDataSampledAvg);
+  
+  # - platform: template
+  #   name: "Gradient viz"
+  #   id: gradient_viz
+  #   unit_of_measurement: "V/s"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+  
+  # - platform: template
+  #   name: "viz thresholdDown"
+  #   id: variable_viz1
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "viz thresholdUp"
+  #   id: variable_viz2
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "step threshold"
+  #   id: variable_vizstep
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "matGradReq"
+  #   id: variable_vizgrad
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
 
 select:
   - platform: template
@@ -209,7 +213,6 @@ select:
      - "Medium pressure" # step_event_threshold = 0.24, matGradientReq = 0.16
      - "Heavy pressure" # step_event_threshold = 0.48, matGradientReq = 0.20
      - "Very Heavy pressure" # step_event_threshold = 0.70, matGradientReq = 0.25
-     - "Custom"
     initial_option: "Light pressure"
     optimistic: true
     restore_value: true
@@ -232,51 +235,16 @@ select:
               id(step_event_threshold) = 0.70;
               id(matGradientReq) = 0.25;
             }
-            id(gradient_requirement_number).publish_state(id(matGradientReq));
-            id(step_threshold_number).publish_state(id(step_event_threshold));
     
 binary_sensor:
   - platform: template
     name: "Mat Sensor"
     id: Mat_binary_trigger
+  
+  # - platform: template
+  #   name: "Threshold down approval"
+  #   id: variable_viz3
 
-number:
-  - platform: template
-    name: "Speed of pressure requirement"
-    id: gradient_requirement_number
-    unit_of_measurement: "V/s"
-    restore_value: true
-    update_interval: never
-    min_value: 0.02
-    max_value: 0.6
-    step: 0.02
-    optimistic: true
-    on_value:
-      then:
-        - globals.set:
-            id: matGradientReq
-            value: !lambda "return x;"
-        # - lambda: |-
-        #     auto call = id(mat_sensitivity_select).make_call();
-        #     call.set_option("Custom");
-        #     call.perform();
-   
-  - platform: template
-    name: "Change in pressure needed to trigger mat"
-    id: step_threshold_number
-    unit_of_measurement: "V"
-    update_interval: never
-    restore_value: true
-    min_value: 0.02
-    max_value: 0.8
-    step: 0.02
-    optimistic: true
-    on_value:
-      then:
-        - globals.set:
-            id: step_event_threshold
-            value: !lambda "return x;"
-        # - lambda: |-
-        #     auto call = id(mat_sensitivity_select).make_call();
-        #     call.set_option("Custom");
-        #     call.perform();
+  # - platform: template
+  #   name: "Threshold up approval"
+  #   id: variable_viz4

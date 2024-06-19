@@ -1,0 +1,260 @@
+### Above this line is the default ESPHome config. Once you get a fresh ESPHome install, paste the code below this line
+globals:
+  - id: step_event_threshold
+    type: float
+    restore_value: yes
+    initial_value: '0.08'
+  - id: matGradientReq
+    type: float
+    restore_value: yes
+    initial_value: '0.12'
+  - id: matDataSampledAvg
+    type: float
+    restore_value: yes
+    initial_value: '1.8'
+
+sensor:            
+  - platform: template
+    name: "internal pressure voltage"
+    id: pressure_adc_voltage
+    update_interval: 75ms
+    internal: True   
+    lambda: |-
+      // Threshold variables
+      static bool matDownThresholdLock = false;
+      static bool matUpThresholdLock = false;
+      static bool justFlippedOff = false;
+      static bool justFlippedOn = false;
+      static float matDownThreshold = id(pressure_adc_voltage).state - id(step_event_threshold);
+      static float matUpThreshold = id(pressure_adc_voltage).state + id(step_event_threshold);
+
+      // Gradient variables
+      static bool matGradientDownApproved = false;
+      static bool matGradientUpApproved = false;
+      static unsigned long matDownThresholdCounter;
+      static unsigned long matUpThresholdCounter;
+      static unsigned long matGradientDownCounter;
+      static unsigned long matGradientUpCounter;
+      static unsigned long matGradientTimer = 5000;
+      static unsigned long matThresholdTimer = 5000;
+      static float previous_matDataAvg = 0;
+      unsigned long currentTime = millis();
+
+      // mat sampling variables
+      static int startUpFlag = 1;
+      static const int sliderWindowSize = 5;
+      static float matDataBuffer[sliderWindowSize] = { 0.0 };
+      static int bufferIndex = 0;
+      int voltSampleAvg = 100;
+      float matDataAvg;
+
+      // on first run through fill the matDataBuffer with the restored value if possible
+      if (startUpFlag) {
+        for (int i = 0; i < sliderWindowSize; i++) {
+          matDataBuffer[i] = id(matDataSampledAvg);
+        }
+      }
+
+      // Need to grab 100 samples to get a better average without sampling HA with values
+      int rawDataSum = 0;
+      for (int i = 0; i < voltSampleAvg; i++) {
+        rawDataSum += analogRead(0);
+      }
+      // The array of sampled matData of the last sliderWindowSize iterations
+      matDataBuffer[bufferIndex] = (rawDataSum / voltSampleAvg) * (3.3 / 4095.0);  // Convert to voltage
+
+      // Average the sampled matData
+      float matDataSum = 0;
+      for (int i = 0; i < sliderWindowSize; i++) {
+        matDataSum += matDataBuffer[i];
+      }
+      matDataAvg = matDataSum / sliderWindowSize;
+
+      // Find the gradient between the last matDataAvg and current matDataAvg
+      float matGradient = (matDataAvg - previous_matDataAvg) / 0.075;            
+
+      if (matDownThresholdLock == true && justFlippedOff == true) {
+        matDownThresholdLock = false;
+      }
+      if (matGradient < -1 * id(matGradientReq)) {
+          matGradientDownApproved = true;
+          matGradientDownCounter = currentTime;
+          if (matDownThresholdLock == false) {
+            matDownThreshold = matDataAvg - id(step_event_threshold);
+            matUpThreshold = matDataAvg + 1.0;
+            matDownThresholdLock = true;
+            matDownThresholdCounter = currentTime;
+          }
+      }
+
+      if (matUpThresholdLock == true && justFlippedOn == true) {
+        matUpThresholdLock = false;
+      }
+      if (matGradient > id(matGradientReq)) {
+        matGradientUpApproved = true;
+        matGradientUpCounter = currentTime;
+        if (matUpThresholdLock == false) {
+          float scaleThreshold;
+          if (id(step_event_threshold) < 0.2) {
+            scaleThreshold = 0.7;
+            } else if (id(step_event_threshold) < 0.5) {
+            scaleThreshold = 0.5;
+            } else {
+            scaleThreshold = 0.3;
+            }
+          matUpThreshold = matDataAvg + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
+          matDownThreshold = matDataAvg - 1.0;
+          matUpThresholdLock = true;
+          matUpThresholdCounter = currentTime;
+        }
+      }
+
+      if (matDownThresholdLock) {
+        if (currentTime - matDownThresholdCounter >= matThresholdTimer) {
+          matDownThresholdLock = false;
+        }
+      }
+
+      if (matUpThresholdLock) {
+        if (currentTime - matUpThresholdCounter >= matThresholdTimer) {
+          matUpThresholdLock = false;
+        }
+      }
+
+      if (matGradientDownApproved == true) {
+        if (currentTime - matGradientDownCounter >= matGradientTimer) {
+          matGradientDownApproved = false;
+        }
+      }
+
+      if (matGradientUpApproved == true) {
+        if (currentTime - matGradientUpCounter >= matGradientTimer) {
+          matGradientUpApproved = false;
+        }
+      }
+
+      //id(variable_viz1).publish_state(matDownThreshold);
+      //id(variable_viz2).publish_state(matUpThreshold);
+      justFlippedOn = false;
+      justFlippedOff = false;
+
+      if (matDataAvg < matDownThreshold && matGradientDownApproved) {
+        justFlippedOn = true;
+        // id(pressure_trigger).turn_on();
+        id(Mat_binary_trigger).publish_state(true);
+      }
+
+      if (matDataAvg > matUpThreshold && matGradientUpApproved) {
+        justFlippedOff = true;
+        // id(pressure_trigger).turn_off();
+        id(Mat_binary_trigger).publish_state(false);
+      }
+
+      //id(gradient_viz).publish_state(matGradient);
+      //id(variable_viz3).publish_state(matGradientDownApproved);
+      //id(variable_viz4).publish_state(matGradientUpApproved);
+      //id(variable_vizstep).publish_state(id(step_event_threshold));
+      //id(variable_vizgrad).publish_state(id(matGradientReq));
+      id(matDataSampledAvg) = matDataAvg;
+      bufferIndex = (bufferIndex + 1) % sliderWindowSize;
+      previous_matDataAvg = matDataAvg;
+      startUpFlag = 0;
+      return matDataAvg;
+
+  - platform: template
+    name: "Pressure Voltage"
+    id: visible_pressure_voltage
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 500ms
+    lambda: |-
+      return id(matDataSampledAvg);
+  
+  # - platform: template
+  #   name: "Gradient viz"
+  #   id: gradient_viz
+  #   unit_of_measurement: "V/s"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+  
+  # - platform: template
+  #   name: "viz thresholdDown"
+  #   id: variable_viz1
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "viz thresholdUp"
+  #   id: variable_viz2
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "step threshold"
+  #   id: variable_vizstep
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+  # - platform: template
+  #   name: "matGradReq"
+  #   id: variable_vizgrad
+  #   unit_of_measurement: "S"
+  #   icon: "mdi:sine-wave"
+  #   accuracy_decimals: 3
+
+select:
+  - platform: template
+    name: Sensitivity Selector
+    id: mat_sensitivity_select
+    options:
+     - "Very light pressure (may cause false triggering)" # step_event_threshold = 0.06, matGradientReq = 0.04
+     - "Light pressure" # step_event_threshold = 0.12, matGradientReq = 0.08
+     - "Medium pressure" # step_event_threshold = 0.24, matGradientReq = 0.16
+     - "Heavy pressure" # step_event_threshold = 0.48, matGradientReq = 0.20
+     - "Very Heavy pressure" # step_event_threshold = 0.70, matGradientReq = 0.25
+    initial_option: "Light pressure"
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "Very light pressure (may cause false triggering)") {
+              id(step_event_threshold) = 0.06;
+              id(matGradientReq) = 0.04;
+            } else if (x == "Light pressure") {
+              id(step_event_threshold) = 0.12;
+              id(matGradientReq) = 0.08;
+            } else if (x == "Medium pressure") {
+              id(step_event_threshold) = 0.24;
+              id(matGradientReq) = 0.16;
+            } else if (x == "Heavy pressure") {
+              id(step_event_threshold) = 0.48;
+              id(matGradientReq) = 0.20;
+            } else if (x == "Very Heavy pressure") {
+              id(step_event_threshold) = 0.70;
+              id(matGradientReq) = 0.25;
+            }
+    
+binary_sensor:
+  - platform: template
+    name: "Mat Sensor"
+    id: Mat_binary_trigger
+  
+  # - platform: template
+  #   name: "Threshold down approval"
+  #   id: variable_viz3
+
+  # - platform: template
+  #   name: "Threshold up approval"
+  #   id: variable_viz4
+
+# switch:
+#   - platform: template
+#     name: "Mat Trigger"
+#     id: pressure_trigger
+#     optimistic: true
+#     restore_mode: RESTORE_DEFAULT_OFF
