@@ -52,43 +52,38 @@ binary_sensor:
   - platform: template
     name: "Mat Sensor"
     id: Mat_binary_trigger
-
+  
 select:
   - platform: template
-    name: Sensitivity Selector
+    name: On/Off Sensitivity
     id: mat_sensitivity_select
     options:
-     - "Very light pressure (may cause false triggering)" # step_event_threshold = 0.06, matGradientReq = 0.04
-     - "Light pressure" # step_event_threshold = 0.12, matGradientReq = 0.08
-     - "Medium pressure" # step_event_threshold = 0.24, matGradientReq = 0.16
-     - "Heavy pressure" # step_event_threshold = 0.48, matGradientReq = 0.20
-     - "Very Heavy pressure" # step_event_threshold = 0.70, matGradientReq = 0.25
+     - "Low weight object (<1 lb) on an uncovered mat, or a heavy weight object on a heavy weight covered mat (e.g. adult human with mat under mattress). Very sensitive, may cause false triggering" # step_event_threshold = 0.06, matGradientReq = 0.04
+     - "Low weight object (~1 lb) on an uncovered mat, or a heavy weight object on a medium weight covered mat (e.g. adult human with mat under rug)." # step_event_threshold = 0.12, matGradientReq = 0.08
+     - "Medium weight object (~1-20 lb) on an uncovered mat, or a heavy weight object on a light weight covered mat (e.g. adult human with mat under light rug)." # step_event_threshold = 0.48, matGradientReq = 0.20
+     - "Heavy weight object (>20 lb) on an uncovered mat, not likely to work well if mat is covered" # step_event_threshold = 0.70, matGradientReq = 0.25
      - "Custom"
-    initial_option: "Light pressure"
+    initial_option: "Low weight object (~1 lb) on an uncovered mat, or a heavy weight object on a medium weight covered mat (e.g. adult human with mat under rug)."
     optimistic: true
     restore_value: true
     on_value:
       then:
-        - logger.log:
-            format: "Chosen option: %s (index %d)"
-            args: ["x.c_str()", "i"]
         - lambda: |-
-            if (x == "Very light pressure (may cause false triggering)") {
+            auto index = id(mat_sensitivity_select).active_index();
+            if (index == 0) {
               id(step_event_threshold) = 0.06;
               id(matGradientReq) = 0.04;
-            } else if (x == "Light pressure") {
+            } else if (index == 1) {
               id(step_event_threshold) = 0.12;
               id(matGradientReq) = 0.08;
-            } else if (x == "Medium pressure") {
-              id(step_event_threshold) = 0.24;
-              id(matGradientReq) = 0.16;
-            } else if (x == "Heavy pressure") {
+            } else if (index == 2) {
               id(step_event_threshold) = 0.48;
               id(matGradientReq) = 0.20;
-            } else if (x == "Very Heavy pressure") {
+            } else if (index == 3) {
               id(step_event_threshold) = 0.70;
               id(matGradientReq) = 0.25;
             }
+
             if (x != "Custom"){
               id(gradient_requirement_number).publish_state(id(matGradientReq));
               id(step_threshold_number).publish_state(id(step_event_threshold));
@@ -266,11 +261,13 @@ interval:
 
         if (matDataAvg < matDownThreshold && matGradientDownApproved) {
           justFlippedOn = true;
+          // id(pressure_trigger).turn_on();
           id(Mat_binary_trigger).publish_state(true);
         }
 
         if (matDataAvg > matUpThreshold && matGradientUpApproved) {
           justFlippedOff = true;
+          // id(pressure_trigger).turn_off();
           id(Mat_binary_trigger).publish_state(false);
         }
 
