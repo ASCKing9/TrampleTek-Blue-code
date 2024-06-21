@@ -3,11 +3,8 @@ substitutions:
   friendly_name: "TrampleTek Mat"
 
 dashboard_import:
-  package_import_url: github://everythingsmarthome/everything-presence-one/everything-presence-one.yaml@main
-  //ascking9/TrampleTek-Blue-code/TrampleTek_Debug/TrampleTek_bootup.yaml@main
-  //ascking9/TrampleTek-Blue-code/TrampleTek%20Debug/TrampleTek_bootup.yaml
-  https://github.com/EverythingSmartHome/everything-presence-one/blob/main/everything-presence-one.yaml
+  package_import_url: github://ascking9/TrampleTek-Blue-code/TrampleTek_bootup.yaml@main
   import_full_config: false
 
 packages:
-  device_base: !include common/everything-presence-one-base.yaml
+  device_base: !include TrampleTek_Debug/TrampleTek_ESPHome_bootup.yaml
