@@ -4,6 +4,9 @@ substitutions:
 
 dashboard_import:
   package_import_url: github://everythingsmarthome/everything-presence-one/everything-presence-one.yaml@main
+  //ascking9/TrampleTek-Blue-code/TrampleTek_Debug/TrampleTek_bootup.yaml@main
+  //ascking9/TrampleTek-Blue-code/TrampleTek%20Debug/TrampleTek_bootup.yaml
+  https://github.com/EverythingSmartHome/everything-presence-one/blob/main/everything-presence-one.yaml
   import_full_config: false
 
 packages:
