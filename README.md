@@ -1,9 +1,6 @@
 
-# Project Name: TrampleTek Blue Home (Assistant version)
-
-![ASC logo](Images/logo.png)
-
-<img src="Images/logo.png" width="100" height="100">
+# Project Name: TrampleTek Blue (Home Assistant version)
+<img src="Images/foot_on_mat.png" width="300">
 
 ## Table of Contents
 
