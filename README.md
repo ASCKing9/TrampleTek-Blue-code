@@ -1,9 +1,7 @@
 
-# Project Name
+# Project Name: TrampleTek Blue Home (Assistant version)
 
-TrampleTek 
-
-![Weather App Logo](Images/logo.png)
+![ASC logo](Images/logo.png | width = 100)
 
 ## Table of Contents
 
