@@ -1,7 +1,9 @@
 
 # Project Name: TrampleTek Blue Home (Assistant version)
 
-![ASC logo](Images/logo.png | width = 100)
+![ASC logo](Images/logo.png)
+
+<img src="Images/logo.png" width="100" height="100">
 
 ## Table of Contents
 
