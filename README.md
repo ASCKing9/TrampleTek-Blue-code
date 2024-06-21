@@ -3,7 +3,7 @@
 
 TrampleTek 
 
-![Weather App Logo](images/logo.png)
+![Weather App Logo](Images/logo.png)
 
 ## Table of Contents
 
