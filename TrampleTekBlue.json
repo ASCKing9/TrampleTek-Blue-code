@@ -1,6 +1,21 @@
 {
-  "message": "hello world",
-  "name": "Test Firmware",
-  "version": "0.0.1",
-  "chipFamily": "ESP32"
+  "name": "TrampleTek Blue Firmware",
+  "version": "1.0.0",
+  "chipFamily": "ESP32",
+  "new_install_skip_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "ota": {
+        "path": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue.bin",
+        "md5": "your-md5-checksum-here"
+      },
+      "parts": [
+        {
+          "path": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
 }
