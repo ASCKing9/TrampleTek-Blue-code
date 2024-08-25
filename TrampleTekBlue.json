@@ -1,17 +1,6 @@
 {
-  "name": "TrampleTek Blue",
-  "version": "",
-  "home_assistant_domain": "esphome",
-  "new_install_skip_erase": false,
-  "builds": [
-    {
-      "chipFamily": "ESP32",
-      "parts": [
-        {
-          "path": "",
-          "offset": 0
-        }
-      ]
-    }
-  ]
+  "message": "hello world",
+  "name": "Test Firmware",
+  "version": "0.0.1",
+  "chipFamily": "ESP32"
 }
