@@ -6,17 +6,11 @@
   "builds": [
     {
       "chipFamily": "ESP32-C3",
-      "ota": {
-        "path": "24.8.3/esp-web-tools-example-esp32c3.ota.bin",
-        "md5": "65e46ac187d9e3a067f52fcbc48d4f65",
-        "summary": "Based on ESPHome 2024.7.3",
-        "release_url": "https://github.com/esphome/firmware/releases/tag/24.8.3"
-      },
       "parts": [
         {
-          "path": "24.8.3/esp-web-tools-example-esp32c3.factory.bin",
+          "path": "TrampleTekBlue.bin",
           "offset": 0
-        }
+        },
       ]
     }
   ]
