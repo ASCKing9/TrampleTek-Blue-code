@@ -1,36 +1,8 @@
-esp32:
-  board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-  encryption:
-    key: "[The encryption key that you set up, if you installed it]"
-ota:
-  - platform: esphome
-      id: esp_ota
-      password: "trampletekblue"
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "TrampleTek Blue backup wifi"
-    password: "trampletektblue"
-
-captive_portal:
-
-wifi:
-  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
 esphome:
   name: ttb-mat
+  name_add_mac_suffix: true
   friendly_name: TTBlue
-  on_boot: #!!!!!!!!!!! YOU WILL NEED TO ADD THIS on_boot SECTION TO THE CODE!!!!!!!
+  on_boot:
       priority: -10
       then:
         - delay: 3s  # Add a delay to ensure components are fully initialized
@@ -43,9 +15,28 @@ esphome:
               call.perform();
             }
 
-### Above this line is are some CHANGES you need to make to esphome: and wifi:
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
 
-### Below is the code that goes at the bottom of your fresh ESPHome install, paste the code below this line.
+# Enable logging
+logger:
+
+ota:
+  - platform: esphome
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "TrampleTek Blue Fallback Hotspot"
+    password: "trampletektblue"
+
+wifi:
+  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+captive_portal:
 
 globals:
   - id: step_event_threshold
