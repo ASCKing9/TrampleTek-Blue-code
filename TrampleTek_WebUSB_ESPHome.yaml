@@ -23,18 +23,24 @@ esp32:
 # Enable logging
 logger:
 
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "YouMightWantToChangeThisToBeMoreSecure"
+
 ota:
   - platform: esphome
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "TrampleTek Blue Fallback Hotspot"
-    password: "trampletektblue"
+    password: "TrampleTekBlue"
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "TrampleTek Blue Fallback Hotspot"
+    password: "TrampleTekBlue"
 
 captive_portal:
 
