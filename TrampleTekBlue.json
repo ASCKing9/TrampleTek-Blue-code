@@ -6,10 +6,6 @@
   "builds": [
     {
       "chipFamily": "ESP32",
-      "ota": {
-        "path": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue.bin",
-        "md5": "your-md5-checksum-here"
-      },
       "parts": [
         {
           "path": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue.bin",
