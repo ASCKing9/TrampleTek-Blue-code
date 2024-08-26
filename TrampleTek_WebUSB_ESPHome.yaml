@@ -34,13 +34,20 @@ ota:
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  fast_connect: false
+  ap: {}
+  # ssid: !secret wifi_ssid
+  # password: !secret wifi_password
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "TrampleTek Blue Fallback Hotspot"
-    password: "TrampleTekBlue"
+  # # Enable fallback hotspot (captive portal) in case wifi connection fails
+  # ap:
+  #   ssid: "TrampleTek Blue Fallback Hotspot"
+  #   password: "TrampleTekBlue"
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
 
 captive_portal:
 
