@@ -8,7 +8,7 @@
       "chipFamily": "ESP32-C3",
       "parts": [
         {
-          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/esphome-web.factory.bin",
+          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.factory.bin",
           "offset": 0
         }
       ]
