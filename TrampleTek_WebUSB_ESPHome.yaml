@@ -1,7 +1,15 @@
-esphome:
+substitutions:
   name: ttb-mat
-  name_add_mac_suffix: true
   friendly_name: TTBlue
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true
+  project:
+    name: AppliedSensorCo.TrampleTek_Blue
+    version: dev
+
   on_boot:
       priority: -10
       then:
@@ -23,19 +31,15 @@ esp32:
 # Enable logging
 logger:
 
-# Enable Home Assistant API
 api:
-  encryption:
-    key: "[you will need to generate your own key if you copy/paste this code]"
 
 ota:
   - platform: esphome
-    password: "TrampleTekBlue"
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  fast_connect: false
-  ap: {}
+  ap:
+    ssid: "TrampleTek Blue Fallback Hotspot"
   # ssid: !secret wifi_ssid
   # password: !secret wifi_password
 
@@ -44,10 +48,16 @@ wifi:
   #   ssid: "TrampleTek Blue Fallback Hotspot"
   #   password: "TrampleTekBlue"
 
+dashboard_import:
+  package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
+  import_full_config: true
+
 improv_serial:
 
 esp32_improv:
   authorizer: none
+
+web_server:
 
 captive_portal:
 
