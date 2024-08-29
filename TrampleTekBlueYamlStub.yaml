@@ -1,3 +1,4 @@
+# This is the YAML that the ttb-mat.factory.bin file is made from
 substitutions:
   name: ttb-mat
   friendly_name: TTBlue
