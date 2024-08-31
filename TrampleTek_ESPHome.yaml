@@ -252,7 +252,7 @@ interval:
         matDataAvg = matDataSum / sliderWindowSize;
 
         // Find the gradient between the last matDataAvg and current matDataAvg
-        float matGradient = (matDataAvg - previous_matDataAvg) / 0.075;            
+        float matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval              
 
         if (matDownThresholdLock == true && justFlippedOff == true) {
           matDownThresholdLock = false;
