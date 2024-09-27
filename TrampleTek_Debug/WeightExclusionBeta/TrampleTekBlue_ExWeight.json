@@ -1,0 +1,17 @@
+{
+  "name": "TrampleTek Blue Weight Exclusion Firmware",
+  "version": "1.0.1",
+  "home_assistant_domain": "esphome",
+  "new_install_skip_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [
+        {
+          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
