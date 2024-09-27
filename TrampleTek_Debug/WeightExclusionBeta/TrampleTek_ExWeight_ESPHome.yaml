@@ -365,20 +365,20 @@ interval:
       justFlippedOff = false;
 
       if (matTriggerDelayOn == false){
-          if (matDataAvg < matDownThreshold && matGradientDownApproved) {
-            justFlippedOn = true;
-            matTriggerDelayOn = true;
-            matTriggerCounter = currentTime;
-            //id(Mat_binary_trigger).publish_state(true);
-          }
-        } else {
-          if (currentTime - matTriggerCounter >= matTriggerTimer) {
-            if (matDataAvg < matDownThreshold && matDataAvg > matDownThresholdMax) {
-              id(Mat_binary_trigger).publish_state(true);
-            }
-            matTriggerDelayOn = false;
-          }
+        if (matDataAvg < matDownThreshold && matGradientDownApproved) {
+          matTriggerDelayOn = true;
+          matTriggerCounter = currentTime;
+          //id(Mat_binary_trigger).publish_state(true);
         }
+      } else {
+        if (currentTime - matTriggerCounter >= matTriggerTimer) {
+          if (matDataAvg < matDownThreshold && matDataAvg > matDownThresholdMax) {
+            justFlippedOn = true;
+            id(Mat_binary_trigger).publish_state(true);
+          }
+          matTriggerDelayOn = false;
+        }
+      }
 
       if (matDataAvg > matUpThreshold && matGradientUpApproved) {
         justFlippedOff = true;
