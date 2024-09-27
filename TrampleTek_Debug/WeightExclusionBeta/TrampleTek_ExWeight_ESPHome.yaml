@@ -15,6 +15,7 @@ esphome:
     then:
     - delay: 3s      # Add a delay to ensure components are fully initialized
     - lambda: |-
+        ESP_LOGI("main", "First ever value of threshold max: %f", id(step_event_threshold_max));
         id(step_threshold_number_max).publish_state(id(step_event_threshold_max));
         if(id(dropdownSelectIndex) == 4) {
           id(step_threshold_number).publish_state(id(step_event_threshold));
@@ -223,11 +224,14 @@ interval:
 - interval: 200ms
   then:
     - lambda: |-
+          ESP_LOGI("main", "interval event threshold : %f", id(step_event_threshold));
+          ESP_LOGI("main", "interval event threshold max: %f", id(step_event_threshold_max));
           if (id(step_event_threshold_max) < id(step_event_threshold) + 0.0199) {
             id(step_event_threshold_max) = id(step_event_threshold) + 0.02;
             id(step_threshold_number_max).publish_state(id(step_event_threshold_max));
           }
           if (id(step_threshold_number_max).state <= id(step_threshold_number).state) {
+            ESP_LOGI("main", "The threshold number is higher than the max);
             id(step_threshold_number_max).publish_state(id(step_event_threshold_max));
           }
 
