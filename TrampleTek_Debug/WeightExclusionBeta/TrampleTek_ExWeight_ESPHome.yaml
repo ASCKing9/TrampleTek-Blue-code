@@ -231,7 +231,7 @@ interval:
             id(step_threshold_number_max).publish_state(id(step_event_threshold_max));
           }
           if (id(step_threshold_number_max).state <= id(step_threshold_number).state) {
-            ESP_LOGI("main", "The threshold number is higher than the max);
+            ESP_LOGI("main", "The threshold number is higher than the max");
             id(step_threshold_number_max).publish_state(id(step_event_threshold_max));
           }
 
