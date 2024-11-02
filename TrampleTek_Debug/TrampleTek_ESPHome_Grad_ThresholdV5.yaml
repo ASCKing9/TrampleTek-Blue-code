@@ -1,0 +1,422 @@
+substitutions:
+  name: ttb-mat-228aec
+  friendly_name: TTBlue Bedmat2
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  project:
+    name: AppliedSensorCo.TrampleTek_Blue
+    version: dev
+
+  on_boot:
+    priority: -10
+    then:
+    - delay: 3s      # Add a delay to ensure components are fully initialized
+    - lambda: |-
+        if(id(dropdownSelectIndex) == 4) {
+          id(step_threshold_number).publish_state(id(step_event_threshold));
+        } else {
+          auto call = id(mat_sensitivity_select).make_call();
+          call.set_index(id(dropdownSelectIndex));
+          call.perform();
+        }
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+api:
+
+ota:
+- platform: esphome
+
+wifi:
+  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  ap:
+    ssid: TrampleTek Blue Fallback Hotspot
+
+dashboard_import:
+  package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
+  import_full_config: true
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
+
+web_server:
+
+captive_portal:
+
+globals:
+- id: step_event_threshold
+  type: float
+  restore_value: yes
+  initial_value: '0.04'
+- id: matGradientReq
+  type: float
+  restore_value: yes
+  initial_value: '0.12'
+- id: matDataSampledAvg
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+- id: selectFlag
+  type: bool
+  initial_value: 'false'
+- id: dropdownSelectIndex
+  type: int
+  restore_value: yes
+  initial_value: '4'
+  
+- id: matDownThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '0.5'
+- id: matUpThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '3.0'
+
+binary_sensor:
+- platform: template
+  name: Mat Sensor
+  id: Mat_binary_trigger
+
+select:
+- platform: template
+  name: Dropdown Sensitivity
+  id: mat_sensitivity_select
+  options:
+  - Low weight object (<1 lb) on an uncovered mat, or a heavy weight object on a heavy
+    weight covered mat (e.g. adult human with mat under mattress). Very sensitive,
+    may cause false triggering                                                                                                                                                                        # step_event_threshold = 0.06, matGradientReq = 0.04
+  - Low weight object (~1 lb) on an uncovered mat, or a heavy weight object on a medium
+    weight covered mat (e.g. adult human with mat under rug).                                                                                          # step_event_threshold = 0.12, matGradientReq = 0.08
+  - Medium weight object (~1-20 lb) on an uncovered mat, or a heavy weight object
+    on a light weight covered mat (e.g. adult human with mat under light rug).                                                                                    # step_event_threshold = 0.48, matGradientReq = 0.20
+  - Heavy weight object (>20 lb) on an uncovered mat, not likely to work well if mat
+    is covered                                                                                       # step_event_threshold = 0.70, matGradientReq = 0.25
+  - Custom
+  optimistic: true
+  on_value:
+    then:
+    - lambda: |-
+        auto index = id(mat_sensitivity_select).active_index();
+        if (index != 4) {
+          id(selectFlag) = true;
+          if (index == 0) {           
+            id(step_event_threshold) = 0.06;
+            id(matGradientReq) = 0.04;
+            id(dropdownSelectIndex) = 0;
+          } else if (index == 1) {
+            id(step_event_threshold) = 0.12;
+            id(matGradientReq) = 0.08;
+            id(dropdownSelectIndex) = 1;
+          } else if (index == 2) {
+            id(step_event_threshold) = 0.48;
+            id(matGradientReq) = 0.20;
+            id(dropdownSelectIndex) = 2;
+          } else if (index == 3) {
+            id(step_event_threshold) = 0.70;
+            id(matGradientReq) = 0.25;
+            id(dropdownSelectIndex) = 3;
+          } 
+          id(step_threshold_number).publish_state(id(step_event_threshold));
+        } else {
+          id(dropdownSelectIndex) = 4;
+        }
+
+
+number:
+  - platform: template
+    name: Sensitivity
+    id: step_threshold_number
+    unit_of_measurement: V
+    update_interval: never
+    min_value: 0.005
+    max_value: 0.3
+    step: 0.001
+    optimistic: true
+    on_value:
+      then:
+      - lambda: |-
+          auto index = id(mat_sensitivity_select).active_index();
+          if (id(selectFlag) == true){              
+            if (id(calibration_button).state == true) {
+              id(calibration_button).publish_state(false);
+            }
+            id(selectFlag) = false;
+          } else {
+            id(step_event_threshold) = x;
+            if (index != 4) {
+              auto call = id(mat_sensitivity_select).make_call();
+              call.set_index(4);
+              call.perform();
+            }
+          }
+
+  # # For debugging mat signal gradient
+  # - platform: template
+  #   name: "Speed of pressure requirement"
+  #   id: gradient_requirement_number
+  #   unit_of_measurement: "V/s"
+  #   restore_value: true
+  #   update_interval: never
+  #   min_value: 0.02
+  #   max_value: 0.6
+  #   step: 0.02
+  #   optimistic: true
+  #   on_value:
+  #     then:
+  #       - globals.set:
+  #           id: matGradientReq
+  #           value: !lambda "return x;"
+  #       - select.set:
+  #           id: mat_sensitivity_select
+  #           option: "Custom"
+
+# Un-comment this sensor to watch the sensor is real-time
+sensor:            
+  - platform: template
+    name: "Pressure Voltage"
+    id: visible_pressure_voltage
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matDataSampledAvg);
+  
+  - platform: template
+    name: "matDownThreshold"
+    id: visible_matDownThreshold
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matDownThresholdID);
+
+  - platform: template
+    name: "matUpThreshold"
+    id: visible_matUpThreshold
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matUpThresholdID);
+
+  # # For debugging mat signal gradient  
+  - platform: template
+    name: "Gradient viz"
+    id: gradient_viz
+    unit_of_measurement: "V/s"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+  - platform: template
+    name: "Gradient req viz"
+    id: gradient_req_viz
+    unit_of_measurement: "V/s"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+
+switch:
+- platform: template
+  name: Calibration
+  id: calibration_button
+  optimistic: true
+
+interval:
+- interval: 50ms
+  then:
+    lambda: |-
+      // Threshold variables
+      static bool matDownThresholdLock = false;
+      static bool matUpThresholdLock = false;
+      static bool justFlippedOff = false;
+      static bool justFlippedOn = false;
+      static float matDownThreshold = id(matDataSampledAvg) - id(step_event_threshold);
+      static float matUpThreshold = id(matDataSampledAvg) + id(step_event_threshold);
+
+      // Gradient variables
+      static bool matGradientDownApproved = false;
+      static bool matGradientUpApproved = false;
+      static unsigned long matDownThresholdCounter;
+      static unsigned long matUpThresholdCounter;
+      static unsigned long matGradientDownCounter;
+      static unsigned long matGradientUpCounter;
+      static unsigned long matGradientTimer = 45000;
+      static unsigned long matThresholdTimer = 5000;
+      static float previous_matDataAvg = 0;
+      unsigned long currentTime = millis();
+
+      // mat sampling variables
+      static int startUpFlag = 1;
+      static const int sliderWindowSize = 7;
+      static float matDataBuffer[sliderWindowSize] = { 0.0 };
+      static int bufferIndex = 0;
+      int voltSampleAvg = 100;
+      float matDataAvg;
+
+      // calibration variables
+      static float calibrationMatDataStart;
+      static bool calibrationFirstLoop = true;
+      static float prevCalibrationChange = 0;
+      static float gradCalibrationMin = 0;
+      float calibrationChange = 0;
+
+      // on first run through fill the matDataBuffer with the restored value if possible
+      if (startUpFlag) {
+        for (int i = 0; i < sliderWindowSize; i++) {
+          matDataBuffer[i] = id(matDataSampledAvg);
+        }
+      }
+
+      // Need to grab 100 samples to get a better average without sampling HA with values
+      int rawDataSum = 0;
+      for (int i = 0; i < voltSampleAvg; i++) {
+        rawDataSum += analogRead(0);
+      }
+      // The array of sampled matData of the last sliderWindowSize iterations
+      matDataBuffer[bufferIndex] = (rawDataSum / voltSampleAvg) * (3.3 / 4095.0);  // Convert to voltage
+
+      // Average the sampled matData
+      float matDataSum = 0;
+      for (int i = 0; i < sliderWindowSize; i++) {
+        matDataSum += matDataBuffer[i];
+      }
+      matDataAvg = matDataSum / sliderWindowSize;
+
+      // Find the gradient between the last matDataAvg and current matDataAvg
+      // on first run through set the gradient to zero
+      float matGradient;
+      if (startUpFlag) {
+        matGradient = 0;
+      } else {
+        matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval
+      }
+
+      if (matDownThresholdLock == true && justFlippedOff == true) {
+        matDownThresholdLock = false;
+      }
+      if (matGradient < -1 * id(matGradientReq)) {
+          matGradientDownApproved = true;
+          matGradientDownCounter = currentTime;
+          id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
+          id(gradient_req_viz).publish_state(id(matGradientReq)); // For debugging mat signal gradient
+          if (matDownThresholdLock == false) {
+            matDownThreshold = previous_matDataAvg - id(step_event_threshold);
+            //matUpThreshold = matDataAvg + 0.05;
+            matDownThresholdLock = true;
+            matDownThresholdCounter = currentTime;
+          }
+      }
+
+      if (matUpThresholdLock == true && justFlippedOn == true) {
+        matUpThresholdLock = false;
+      }
+      if (matGradient > id(matGradientReq)) { // mat can be slower to recover, reduces up requirement
+        matGradientUpApproved = true;
+        matGradientUpCounter = currentTime;
+        id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
+        id(gradient_req_viz).publish_state(id(matGradientReq)); // For debugging mat signal gradient
+        if (matUpThresholdLock == false) {
+          float scaleThreshold;
+          if (id(step_event_threshold) < 0.2) {
+            scaleThreshold = 1;
+            } else if (id(step_event_threshold) < 0.5) {
+            scaleThreshold = 0.4;
+            } else {
+            scaleThreshold = 0.3;
+            }
+          matUpThreshold = previous_matDataAvg + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
+          //matDownThreshold = matDataAvg - 0.05;
+          matUpThresholdLock = true;
+          matUpThresholdCounter = currentTime;
+        }
+      }
+
+      if (matDownThresholdLock) {
+        if (currentTime - matDownThresholdCounter >= matThresholdTimer) {
+          matDownThresholdLock = false;
+        }
+      }
+
+      if (matUpThresholdLock) {
+        if (currentTime - matUpThresholdCounter >= matThresholdTimer) {
+          matUpThresholdLock = false;
+        }
+      }
+
+      if (matGradientDownApproved == true) {
+        if (currentTime - matGradientDownCounter >= matGradientTimer) {
+          matGradientDownApproved = false;
+        }
+      }
+
+      if (matGradientUpApproved == true) {
+        if (currentTime - matGradientUpCounter >= matGradientTimer) {
+          matGradientUpApproved = false;
+        }
+      }
+
+      justFlippedOn = false;
+      justFlippedOff = false;
+
+      if (matDataAvg < matDownThreshold && matGradientDownApproved) {
+        justFlippedOn = true;
+        // id(pressure_trigger).turn_on();
+        id(Mat_binary_trigger).publish_state(true);
+      }
+
+      if (matDataAvg > matUpThreshold && matGradientUpApproved) {
+        justFlippedOff = true;
+        // id(pressure_trigger).turn_off();
+        id(Mat_binary_trigger).publish_state(false);
+      }
+
+
+      if (id(calibration_button).state == true) {
+        if (calibrationFirstLoop == true) {
+          calibrationFirstLoop = false;
+          calibrationMatDataStart = matDataAvg;
+          id(step_event_threshold) = 0.00;
+          id(step_threshold_number).publish_state(0.00);
+        } else {
+          calibrationChange = (calibrationMatDataStart - matDataAvg) * 0.6; // reduce the number a little to ensure the mat can reach and go below the calibration threshold
+          if (calibrationChange > prevCalibrationChange) {
+            float truncatedCaliValue = ((int)(calibrationChange * 1000)) / 1000.0; // need to cut down to only 2 decimals  
+            //id(step_event_threshold) = truncatedCaliValue;
+            id(step_threshold_number).publish_state(truncatedCaliValue);
+
+            if (matGradient < gradCalibrationMin) {
+              id(matGradientReq) = -1 * matGradient * 0.3;
+              gradCalibrationMin = matGradient;
+              //id(gradient_requirement_number).publish_state(id(matGradientReq)); // For debugging mat signal gradient
+            }
+            prevCalibrationChange = calibrationChange;
+          }
+        }
+      } else {
+        calibrationFirstLoop = true;
+        calibrationChange = 0;
+        prevCalibrationChange = 0;
+        gradCalibrationMin = 0;
+      }
+
+      //id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
+      //id(gradient_req_viz).publish_state(id(matGradientReq)); // For debugging mat signal gradient
+      id(matDataSampledAvg) = matDataAvg;
+      id(matDownThresholdID) = matDownThreshold;
+      id(matUpThresholdID) = matUpThreshold;
+      bufferIndex = (bufferIndex + 1) % sliderWindowSize;
+      previous_matDataAvg = matDataAvg;
+      startUpFlag = 0;
