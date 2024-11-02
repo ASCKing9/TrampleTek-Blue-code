@@ -252,7 +252,13 @@ interval:
         matDataAvg = matDataSum / sliderWindowSize;
 
         // Find the gradient between the last matDataAvg and current matDataAvg
-        float matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval              
+        // on first run through set the gradient to zero
+        float matGradient;
+        if (startUpFlag) {
+          matGradient = 0;
+        } else {
+          matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval
+        }               
 
         if (matDownThresholdLock == true && justFlippedOff == true) {
           matDownThresholdLock = false;
@@ -261,8 +267,8 @@ interval:
             matGradientDownApproved = true;
             matGradientDownCounter = currentTime;
             if (matDownThresholdLock == false) {
-              matDownThreshold = matDataAvg - id(step_event_threshold);
-              matUpThreshold = matDataAvg + 1.0;
+              matDownThreshold = previous_matDataAvg - id(step_event_threshold);
+              matUpThreshold = matDaprevious_matDataAvgtaAvg + 1.0;
               matDownThresholdLock = true;
               matDownThresholdCounter = currentTime;
             }
@@ -283,8 +289,8 @@ interval:
               } else {
               scaleThreshold = 0.3;
               }
-            matUpThreshold = matDataAvg + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
-            matDownThreshold = matDataAvg - 1.0;
+            matUpThreshold = previous_matDataAvg + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
+            matDownThreshold = previous_matDataAvg - 1.0;
             matUpThresholdLock = true;
             matUpThresholdCounter = currentTime;
           }
