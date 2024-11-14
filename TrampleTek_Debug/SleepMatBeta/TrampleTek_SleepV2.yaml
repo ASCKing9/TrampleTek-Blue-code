@@ -1,58 +1,3 @@
-substitutions:
-  name: ttb-mat-0490c4
-  friendly_name: TTBlue Bedmat3
-
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
-  name_add_mac_suffix: false
-  project:
-    name: AppliedSensorCo.TrampleTek_Blue
-    version: dev
-
-  on_boot:
-    priority: -10
-    then:
-    - delay: 3s      # Add a delay to ensure components are fully initialized
-    - lambda: |-
-        if(id(dropdownSelectIndex) == 4) {
-          id(step_threshold_number).publish_state(id(step_event_threshold));
-        } else {
-          auto call = id(mat_sensitivity_select).make_call();
-          call.set_index(id(dropdownSelectIndex));
-          call.perform();
-        }
-
-esp32:
-  board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
-
-# Enable logging
-logger:
-
-api:
-
-ota:
-- platform: esphome
-
-wifi:
-  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ap:
-    ssid: TrampleTek Blue Fallback Hotspot
-
-dashboard_import:
-  package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
-  import_full_config: true
-
-improv_serial:
-
-esp32_improv:
-  authorizer: none
-
-web_server:
-
-captive_portal:
 
 globals:
   - id: step_event_threshold
@@ -92,8 +37,6 @@ binary_sensor:
   - platform: template
     name: "Mat Sensor"
     id: Mat_binary_trigger
-    filters:
-      - delayed_on_off: 500ms
   
 select:
   - platform: template
@@ -244,7 +187,6 @@ interval:
         static bool matUpThresholdLock = false;
         static bool justFlippedOff = false;
         static bool justFlippedOn = false;
-        static bool previousSensorBool;
         static float matDownThreshold = id(matDataSampledAvg) - id(step_event_threshold);
         static float matUpThreshold = id(matDataSampledAvg) + id(step_event_threshold);
 
@@ -285,7 +227,6 @@ interval:
           for (int i = 0; i < sliderWindowSize; i++) {
             matDataBuffer[i] = id(matDataSampledAvg);
           }
-          previousSensorBool = id(Mat_binary_trigger).state;
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
         }
 
@@ -381,29 +322,27 @@ interval:
 
         justFlippedOn = false;
         justFlippedOff = false;
-        float upperOffLimit = 1.872;
-        float lowOnLimit = 1.850;
 
-        if ((matDataAvg < matDownThreshold && matGradientDownApproved) && ((matDataAvg < upperOffLimit))) {
+        if (matDataAvg < matDownThreshold && matGradientDownApproved) {
           if (id(Mat_binary_trigger).state != true){
             justFlippedOn = true;
             id(sensorBoolValue) = true;
-            //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+            id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           }
         }
 
         if (matTriggerDelayOn == false){
-          if ((matDataAvg > matUpThreshold && matGradientUpApproved) || (matDataAvg > upperOffLimit)) {
+          if ((matDataAvg > matUpThreshold && matGradientUpApproved) || (matDataAvg > 1.905)) {
             matTriggerDelayOn = true;
             matTriggerCounter = currentTime;
           }
         } else {
           if (currentTime - matTriggerCounter >= matTriggerTimer) {
-            if (matDataAvg > matUpThreshold || matDataAvg > upperOffLimit) {
+            if (matDataAvg > matUpThreshold || matDataAvg > 1.905) {
               if (id(Mat_binary_trigger).state != false){
                 justFlippedOff = true;
                 id(sensorBoolValue) = false;
-                //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+                id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
               }
             }
             matTriggerDelayOn = false;
@@ -415,16 +354,12 @@ interval:
         //  id(Mat_binary_trigger).publish_state(false);
         //}
 
-        if (matDataAvg < lowOnLimit) {
+        if (matDataAvg < 1.89) {
           if (id(Mat_binary_trigger).state != true){
             justFlippedOn = true;
             id(sensorBoolValue) = true;
-            //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+            id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           }
-        }
-
-        if (previousSensorBool != id(sensorBoolValue)) {
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
         }
 
         if (id(calibration_button).state == true) {
@@ -460,6 +395,5 @@ interval:
         //id(matDownThresholdID) = matDownThreshold;
         //id(matUpThresholdID) = matUpThreshold;
         bufferIndex = (bufferIndex + 1) % sliderWindowSize;
-        previousSensorBool = id(Mat_binary_trigger).state;
         previous_matDataAvg = matDataAvg;
         startUpFlag = 0;

@@ -1,58 +1,58 @@
-substitutions:
-  name: ttb-mat-0490c4
-  friendly_name: TTBlue Bedmat3
+# substitutions:
+#   name: ttb-mat-0490c4
+#   friendly_name: TTBlue Bedmat3
 
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
-  name_add_mac_suffix: false
-  project:
-    name: AppliedSensorCo.TrampleTek_Blue
-    version: dev
+# esphome:
+#   name: ${name}
+#   friendly_name: ${friendly_name}
+#   name_add_mac_suffix: false
+#   project:
+#     name: AppliedSensorCo.TrampleTek_Blue
+#     version: dev
 
-  on_boot:
-    priority: -10
-    then:
-    - delay: 3s      # Add a delay to ensure components are fully initialized
-    - lambda: |-
-        if(id(dropdownSelectIndex) == 4) {
-          id(step_threshold_number).publish_state(id(step_event_threshold));
-        } else {
-          auto call = id(mat_sensitivity_select).make_call();
-          call.set_index(id(dropdownSelectIndex));
-          call.perform();
-        }
+#   on_boot:
+#     priority: -10
+#     then:
+#     - delay: 3s      # Add a delay to ensure components are fully initialized
+#     - lambda: |-
+#         if(id(dropdownSelectIndex) == 4) {
+#           id(step_threshold_number).publish_state(id(step_event_threshold));
+#         } else {
+#           auto call = id(mat_sensitivity_select).make_call();
+#           call.set_index(id(dropdownSelectIndex));
+#           call.perform();
+#         }
 
-esp32:
-  board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
+# esp32:
+#   board: esp32-c3-devkitm-1
+#   framework:
+#     type: arduino
 
-# Enable logging
-logger:
+# # Enable logging
+# logger:
 
-api:
+# api:
 
-ota:
-- platform: esphome
+# ota:
+# - platform: esphome
 
-wifi:
-  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ap:
-    ssid: TrampleTek Blue Fallback Hotspot
+# wifi:
+#   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+#   ap:
+#     ssid: TrampleTek Blue Fallback Hotspot
 
-dashboard_import:
-  package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
-  import_full_config: true
+# dashboard_import:
+#   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
+#   import_full_config: true
 
-improv_serial:
+# improv_serial:
 
-esp32_improv:
-  authorizer: none
+# esp32_improv:
+#   authorizer: none
 
-web_server:
+# web_server:
 
-captive_portal:
+# captive_portal:
 
 globals:
   - id: step_event_threshold
@@ -62,8 +62,12 @@ globals:
   - id: matGradientReq
     type: float
     restore_value: yes
-    initial_value: '0.04'
+    initial_value: '0.12'
   - id: matDataSampledAvg
+    type: float
+    restore_value: yes
+    initial_value: '1.8'
+  - id: matDataSampledAvgLong
     type: float
     restore_value: yes
     initial_value: '1.8'
@@ -74,10 +78,6 @@ globals:
     type: int
     restore_value: yes
     initial_value: '4'
-  - id: sensorBoolValue
-    type: bool
-    initial_value: 'false'
-    restore_value: yes
     
   # - id: matDownThresholdID
   #   type: float
@@ -92,8 +92,6 @@ binary_sensor:
   - platform: template
     name: "Mat Sensor"
     id: Mat_binary_trigger
-    filters:
-      - delayed_on_off: 500ms
   
 select:
   - platform: template
@@ -171,7 +169,7 @@ number:
     restore_value: true
     update_interval: never
     min_value: 0.001
-    max_value: 0.4
+    max_value: 0.3
     step: 0.001
     optimistic: true
     on_value:
@@ -194,6 +192,16 @@ sensor:
     update_interval: 1s
     lambda: |-
       return id(matDataSampledAvg);
+
+  - platform: template
+    name: "Pressure Voltage Long avg"
+    id: visible_pressure_voltage_Long
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matDataSampledAvgLong);
   
   - platform: template
     name: "matDownThreshold"
@@ -244,7 +252,6 @@ interval:
         static bool matUpThresholdLock = false;
         static bool justFlippedOff = false;
         static bool justFlippedOn = false;
-        static bool previousSensorBool;
         static float matDownThreshold = id(matDataSampledAvg) - id(step_event_threshold);
         static float matUpThreshold = id(matDataSampledAvg) + id(step_event_threshold);
 
@@ -265,14 +272,22 @@ interval:
         static unsigned long matTriggerTimer = 5000;
         static bool matTriggerDelayOn = false;
 
-        // mat sampling variables
-        static int startUpFlag = 1;
+        // mat sampling short samples
         static const int sliderWindowSize = 7;
         static float matDataBuffer[sliderWindowSize] = { 0.0 };
         static int bufferIndex = 0;
-        int voltSampleAvg = 100;
         float matDataAvg;
 
+        // mat sampling long samples
+        static const int sliderWindowSizeLong = 600;
+        static float matDataBufferLong[sliderWindowSizeLong] = { 0.0 };
+        static int bufferIndexLong = 0;
+        float matDataAvgLong;
+
+        // mat sampling variables
+        static int startUpFlag = 1;
+        int voltSampleAvg = 100;
+        
         // calibration variables
         static float calibrationMatDataStart;
         static bool calibrationFirstLoop = true;
@@ -285,8 +300,9 @@ interval:
           for (int i = 0; i < sliderWindowSize; i++) {
             matDataBuffer[i] = id(matDataSampledAvg);
           }
-          previousSensorBool = id(Mat_binary_trigger).state;
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+          for (int i = 0; i < sliderWindowSizeLong; i++) {
+            matDataBufferLong[i] = id(matDataSampledAvgLong);
+          }
         }
 
         // Need to grab 100 samples to get a better average without sampling HA with values
@@ -296,13 +312,21 @@ interval:
         }
         // The array of sampled matData of the last sliderWindowSize iterations
         matDataBuffer[bufferIndex] = (rawDataSum / voltSampleAvg) * (3.3 / 4095.0);  // Convert to voltage
+        matDataBufferLong[bufferIndexLong] = (rawDataSum / voltSampleAvg) * (3.3 / 4095.0);  // Convert to voltage
 
-        // Average the sampled matData
+        // Average the short sampled matData
         float matDataSum = 0;
         for (int i = 0; i < sliderWindowSize; i++) {
           matDataSum += matDataBuffer[i];
         }
         matDataAvg = matDataSum / sliderWindowSize;
+
+        // Average the long sampled matData
+        float matDataSumLong = 0;
+        for (int i = 0; i < sliderWindowSizeLong; i++) {
+          matDataSumLong += matDataBufferLong[i];
+        }
+        matDataAvgLong = matDataSumLong / sliderWindowSizeLong;
 
         // Find the gradient between the last matDataAvg and current matDataAvg
         // on first run through set the gradient to zero
@@ -381,51 +405,34 @@ interval:
 
         justFlippedOn = false;
         justFlippedOff = false;
-        float upperOffLimit = 1.872;
-        float lowOnLimit = 1.850;
 
-        if ((matDataAvg < matDownThreshold && matGradientDownApproved) && ((matDataAvg < upperOffLimit))) {
-          if (id(Mat_binary_trigger).state != true){
-            justFlippedOn = true;
-            id(sensorBoolValue) = true;
-            //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          }
+        if (matDataAvg < matDownThreshold && matGradientDownApproved) {
+          justFlippedOn = true;
+          // id(pressure_trigger).turn_on();
+          id(Mat_binary_trigger).publish_state(true);
         }
 
         if (matTriggerDelayOn == false){
-          if ((matDataAvg > matUpThreshold && matGradientUpApproved) || (matDataAvg > upperOffLimit)) {
+          if (matDataAvg > matUpThreshold && matGradientUpApproved) {
             matTriggerDelayOn = true;
             matTriggerCounter = currentTime;
           }
         } else {
           if (currentTime - matTriggerCounter >= matTriggerTimer) {
-            if (matDataAvg > matUpThreshold || matDataAvg > upperOffLimit) {
-              if (id(Mat_binary_trigger).state != false){
-                justFlippedOff = true;
-                id(sensorBoolValue) = false;
-                //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-              }
+            if (matDataAvg > matUpThreshold) {
+              justFlippedOff = true;
+              id(Mat_binary_trigger).publish_state(false);
             }
             matTriggerDelayOn = false;
           }
-        } 
+        }
 
         //if (matDataAvg > matUpThreshold && matGradientUpApproved) {
         //  justFlippedOff = true;
+        //  // id(pressure_trigger).turn_off();
         //  id(Mat_binary_trigger).publish_state(false);
         //}
-
-        if (matDataAvg < lowOnLimit) {
-          if (id(Mat_binary_trigger).state != true){
-            justFlippedOn = true;
-            id(sensorBoolValue) = true;
-            //id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          }
-        }
-
-        if (previousSensorBool != id(sensorBoolValue)) {
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-        }
+        
 
         if (id(calibration_button).state == true) {
           if (calibrationFirstLoop == true) {
@@ -441,7 +448,7 @@ interval:
               id(step_threshold_number).publish_state(truncatedCaliValue);
 
               if (matGradient < gradCalibrationMin) {
-                id(matGradientReq) = -1 * matGradient * 0.3;
+                id(matGradientReq) = -1 * matGradient * 0.75;
                 gradCalibrationMin = matGradient;
                 //id(gradient_requirement_number).publish_state(id(matGradientReq)); // For debugging mat signal gradient
               }
@@ -457,9 +464,10 @@ interval:
 
         //id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
         id(matDataSampledAvg) = matDataAvg;
+        id(matDataSampledAvgLong) = matDataAvgLong;
         //id(matDownThresholdID) = matDownThreshold;
         //id(matUpThresholdID) = matUpThreshold;
         bufferIndex = (bufferIndex + 1) % sliderWindowSize;
-        previousSensorBool = id(Mat_binary_trigger).state;
+        bufferIndexLong = (bufferIndexLong + 1) % sliderWindowSizeLong;
         previous_matDataAvg = matDataAvg;
         startUpFlag = 0;
