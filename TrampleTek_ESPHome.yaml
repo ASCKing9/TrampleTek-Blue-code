@@ -268,7 +268,7 @@ interval:
             matGradientDownCounter = currentTime;
             if (matDownThresholdLock == false) {
               matDownThreshold = previous_matDataAvg - id(step_event_threshold);
-              matUpThreshold = matDaprevious_matDataAvgtaAvg + 1.0;
+              matUpThreshold = previous_matDataAvg + 1.0;
               matDownThresholdLock = true;
               matDownThresholdCounter = currentTime;
             }
