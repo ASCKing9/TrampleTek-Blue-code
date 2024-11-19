@@ -1,0 +1,324 @@
+# substitutions:
+#   name: ttb-mat-0490c4
+#   friendly_name: TTBlue Bedmat3
+
+# esphome:
+#   name: ${name}
+#   friendly_name: ${friendly_name}
+#   name_add_mac_suffix: false
+#   project:
+#     name: AppliedSensorCo.TrampleTek_Blue
+#     version: dev
+
+#   on_boot:
+#     priority: -10
+#     then:
+#     - delay: 3s      # Add a delay to ensure components are fully initialized
+#     - lambda: |-
+#         id(step_threshold_number).publish_state(id(event_threshold));
+#         id(lower_limit_voltage).publish_state(id(lower_limit_g));
+#         id(upper_limit_voltage).publish_state(id(upper_limit_g));
+
+# esp32:
+#   board: esp32-c3-devkitm-1
+#   framework:
+#     type: arduino
+
+# # Enable logging
+# logger:
+
+# api:
+
+# ota:
+# - platform: esphome
+
+# wifi:
+#   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+#   ap:
+#     ssid: TrampleTek Blue Fallback Hotspot
+
+# dashboard_import:
+#   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
+#   import_full_config: true
+
+# improv_serial:
+
+# esp32_improv:
+#   authorizer: none
+
+# web_server:
+
+# captive_portal:
+
+globals:
+  - id: event_threshold
+    type: float
+    restore_value: yes
+    initial_value: '0.04'
+
+  - id: filteredMatSignal
+    type: float
+    restore_value: yes
+    initial_value: '1.8'
+
+  - id: sensorBoolValue
+    type: bool
+    initial_value: 'false'
+    restore_value: yes
+    
+  - id: matDownThresholdID
+    type: float
+    restore_value: yes
+    initial_value: '1.5'
+
+  - id: matUpThresholdID
+    type: float
+    restore_value: yes
+    initial_value: '3.0'
+
+  - id: lower_limit_g
+    type: float
+    restore_value: yes
+    initial_value: '1.5'
+    
+  - id: upper_limit_g
+    type: float
+    restore_value: yes
+    initial_value: '2.5'
+
+binary_sensor:
+  - platform: template
+    name: "Mat Sensor"
+    id: Mat_binary_trigger
+
+number:
+  - platform: template
+    name: "Sensitivity"
+    id: step_threshold_number
+    unit_of_measurement: "V"
+    update_interval: never
+    initial_value: 0.01
+    min_value: 0.001
+    max_value: 0.5
+    step: 0.001
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            id(event_threshold) = x;
+            if (id(calibration_button).state == true) {
+              id(calibration_button).publish_state(false);
+            }
+  
+  - platform: template
+    name: "Empty Bed value"
+    id: upper_limit_voltage
+    unit_of_measurement: "V"
+    update_interval: never
+    initial_value: 2.5
+    min_value: 1.0
+    max_value: 3.3
+    step: 0.001
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            id(upper_limit_g) = x;
+  
+  - platform: template
+    name: "Full Bed value"
+    id: lower_limit_voltage
+    unit_of_measurement: "V"
+    update_interval: never
+    initial_value: 1.5
+    min_value: 1.0
+    max_value: 3.3
+    step: 0.001
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            id(lower_limit_g) = x;
+
+# Un-comment this sensor to watch the sensor is real-time
+sensor:            
+  - platform: template
+    name: "Pressure Voltage"
+    id: visible_pressure_voltage
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(filteredMatSignal);
+  
+  - platform: template
+    name: "matDownThreshold"
+    id: visible_matDownThreshold
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matDownThresholdID);
+
+  - platform: template
+    name: "matUpThreshold"
+    id: visible_matUpThreshold
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: 1s
+    lambda: |-
+      return id(matUpThresholdID);
+
+switch:
+  - platform: template
+    name: "Calibration"
+    id: calibration_button
+    optimistic: true
+
+interval:
+  - interval: 50ms
+    then:
+      lambda: |-
+        // Butterworth low-pass filter coefficients for the main signal (0.5 Hz cutoff)
+        static const float lowPassB[] = {0.07295966, 0.07295966};  // Numerator coefficients
+        static const float lowPassA[] = {1.0, -0.85408069};        // Denominator coefficients
+
+        // Butterworth low-pass filter coefficients for the threshold signal (0.05 Hz cutoff)
+        //static const float thresholdB[] = {0.00779294, 0.00779294};  // Numerator coefficients
+        //static const float thresholdA[] = {1.0, -0.98441413};        // Denominator coefficients
+
+        // Butterworth low-pass filter coefficients for the threshold signal (0.03 Hz cutoff)
+        const float thresholdB[] = {0.00469032, 0.00469032};  // Numerator coefficients
+        const float thresholdA[] = {1.0, -0.99061936};        // Denominator coefficients
+
+        // Variables for the main low-pass filter
+        static float lowPassPrevInput = 0;          // Stores the last input value for low-pass filter
+        static float lowPassPrevOutput = 0;         // Stores the last output value for low-pass filter
+
+        // Variables for the threshold low-pass filter
+        static float thresholdPrevInput = 0;        // Stores the last input value for threshold filter
+        static float thresholdPrevOutput = 0;       // Stores the last output value for threshold filter
+
+        // Long-term event tracking
+        static unsigned long lastEventTime = 0;                             // Time of the last detected event
+        static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds
+
+        // Off transition validation
+        static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
+        static bool validatingOffTransition = false;              // Flag to indicate "off" validation period
+        const unsigned long offValidationDuration = 5000;         // 5-second timer for "off" transition
+
+        // Fixed threshold limits
+        float fixedUpperLimit = id(upper_limit_g);         // Fixed upper threshold
+        float fixedLowerLimit = id(lower_limit_g);         // Fixed lower threshold
+
+        // Dynamic thresholds
+        float dynamicUpperThreshold;   // Upper dynamic threshold
+        float dynamicLowerThreshold;   // Lower dynamic threshold
+
+        // Threshold offset variables
+        float dynamicThresholdOffset = id(event_threshold); // Offset for dynamic thresholds relative to the threshold signal
+        float longTermThresholdOffset = dynamicThresholdOffset / 2; // Offset for lower threshold after long-term stability
+
+        // Sensor states
+        static bool previousIsOnState = id(sensorBoolValue);  // Initialize previous state flag
+        bool isOn = id(sensorBoolValue);                      // State flag ("on" or "off")
+
+        // Analog pin reading on Lolin C3-Mini board
+        int analogPin = 0;
+        
+        static bool startUpFlag = true;
+        // Start up values for signal and threshold filters
+        if (startUpFlag) {
+          // Initialize filters with the first input value
+          float initialVoltage = analogRead(analogPin) * (3.3 / 4095.0);
+          lowPassPrevInput = initialVoltage;
+          lowPassPrevOutput = initialVoltage;
+          thresholdPrevInput = initialVoltage;
+          thresholdPrevOutput = initialVoltage;
+          
+          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+        }
+     
+        // Step 1: Read the raw signal from the analog pin
+        const int numSamples = 100;  // Number of readings for averaging
+        float voltageSum = 0;
+        for (int i = 0; i < numSamples; i++) {
+          voltageSum += analogRead(analogPin);  // Collect raw data
+        }
+        float voltage = (voltageSum / numSamples) * (3.3 / 4095.0);         // Average of 100 readings and convert to voltage
+
+        // Step 2: Apply the low-pass filter to the main signal
+        float lowPassOutput = lowPassB[0] * voltage + lowPassB[1] * lowPassPrevInput - lowPassA[1] * lowPassPrevOutput;
+        lowPassPrevInput = voltage;
+        lowPassPrevOutput = lowPassOutput;
+
+        // Step 3: Apply the low-pass filter to the voltage signal for the threshold
+        float thresholdSignal = thresholdB[0] * voltage + thresholdB[1] * thresholdPrevInput - thresholdA[1] * thresholdPrevOutput;
+        thresholdPrevInput = voltage;
+        thresholdPrevOutput = thresholdSignal;
+
+        // Step 4: Update Upper dynamic threshold
+        dynamicUpperThreshold = constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        
+        // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
+        if (millis() - lastEventTime > noEventThreshold) {
+          // Lower the "on" threshold sensitivity after 10 minutes of no events
+          dynamicLowerThreshold = constrain(thresholdSignal - longTermThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        } else {
+          dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        }
+
+        // Step 6: Handle "on" and "off" states
+        if (isOn) {
+          // Immediate "off" if low-pass signal exceeds the fixed upper limit
+          if (lowPassOutput > fixedUpperLimit) {
+            isOn = false;
+            offValidationStartTime = 0;
+            validatingOffTransition = false;
+            lastEventTime = millis();
+          }
+          // Validate "off" transition if the low-pass signal crosses the dynamic upper threshold
+          else if (lowPassOutput > dynamicUpperThreshold) {
+            if (!validatingOffTransition) {
+              // Start the validation timer
+              offValidationStartTime = millis();
+              validatingOffTransition = true;
+            } else if (millis() - offValidationStartTime >= offValidationDuration) {
+              // Timer expired: Turn "off"
+              isOn = false;
+              offValidationStartTime = 0;
+              validatingOffTransition = false;
+              lastEventTime = millis();
+            }
+          } else {
+            // Cancel validation if signal drops below dynamic upper threshold
+            offValidationStartTime = 0;
+            validatingOffTransition = false;
+          }
+        } else {
+          // Transition to "on" if low-pass signal crosses dynamic lower threshold
+          if (lowPassOutput < dynamicLowerThreshold) {
+            isOn = true;
+            lastEventTime = millis();
+          }
+        }
+        
+        // Step 7: Publish new binary state if needed
+        if (previousIsOnState != isOn) {
+          id(sensorBoolValue) = isOn;
+          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+        }
+
+        // Step 8: update persistent variables
+        id(filteredMatSignal) = lowPassOutput;
+        id(matDownThresholdID) = dynamicLowerThreshold;
+        id(matUpThresholdID) = dynamicUpperThreshold;
+        previousIsOnState = id(sensorBoolValue);
+        startUpFlag = false;
