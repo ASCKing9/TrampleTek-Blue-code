@@ -122,9 +122,9 @@ number:
     id: step_threshold_number
     unit_of_measurement: "V"
     update_interval: never
-    min_value: 0.02
+    min_value: 0.01
     max_value: 1.0
-    step: 0.02
+    step: 0.01
     optimistic: true
     on_value:
       then:
