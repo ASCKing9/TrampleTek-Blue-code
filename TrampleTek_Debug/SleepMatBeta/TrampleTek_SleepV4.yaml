@@ -346,7 +346,7 @@ interval:
           id(sensitivity_number).publish_state(3);
 
           // Adjust the limits by a percentage of the signalDifference, based on a typical 30s calibration time and personal heuristics
-          calibrationMin  = calibrationMin - (signalDifference * 0.2); // shift lower limit down by 20% of signalDifference
+          calibrationMin  = calibrationMin - (signalDifference * 0.1); // shift lower limit down by 10% of signalDifference
           float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(lower_limit_voltage).publish_state(truncatedCaliValue);
 
