@@ -10,15 +10,6 @@ esphome:
     name: AppliedSensorCo.TrampleTek_Blue
     version: dev
 
-  on_boot:
-    priority: -10
-    then:
-    - delay: 3s      # Add a delay to ensure components are fully initialized
-    - lambda: |-
-        id(sensitivity_number).publish_state(id(event_threshold));
-        id(lower_limit_voltage).publish_state(id(lower_limit_g));
-        id(upper_limit_voltage).publish_state(id(upper_limit_g));
-
 esp32:
   board: esp32-c3-devkitm-1
   framework:
@@ -173,7 +164,7 @@ sensor:
 
 switch:
   - platform: template
-    name: "Calibration (lay on bed for at least 30s before getting up)"
+    name: "Calibration (turn on, lay on bed for at least 30s, get out of bed, turn off)"
     id: calibration_button
     optimistic: true
 
@@ -212,7 +203,7 @@ interval:
         // Off transition validation
         static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
         static bool validatingOffTransition = false;              // Flag to indicate "off" validation period
-        const unsigned long offValidationDuration = 5000;         // 5-second timer for "off" transition
+        const unsigned long offValidationDuration = 10000;         // 5-second timer for "off" transition
 
         // Calibration variables
         static float calibrationMax = 0.0;    // Set to minimum possible signal value
@@ -251,6 +242,9 @@ interval:
           thresholdPrevOutput = initialVoltage;
           
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+          id(sensitivity_number).publish_state(id(event_threshold));
+          id(lower_limit_voltage).publish_state(id(lower_limit_g));
+          id(upper_limit_voltage).publish_state(id(upper_limit_g));
         }
      
         // Step 1: Read the raw signal from the analog pin
@@ -350,7 +344,7 @@ interval:
           float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(lower_limit_voltage).publish_state(truncatedCaliValue);
 
-          calibrationMax  = calibrationMax - (signalDifference * 0.5); // shift upper limit down by 40% of signalDifference
+          calibrationMax  = calibrationMax - (signalDifference * 0.5); // shift upper limit down by 50% of signalDifference
           truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(upper_limit_voltage).publish_state(truncatedCaliValue);
 
