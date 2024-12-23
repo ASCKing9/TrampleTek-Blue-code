@@ -1,45 +1,47 @@
-substitutions:
-  name: ttb-mat-0490c4
-  friendly_name: TTBlue Bedmat3
+# substitutions:
+#   name: ttb-mat-0490c4
+#   friendly_name: TTBlue Bedmat3
 
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
-  name_add_mac_suffix: false
-  project:
-    name: AppliedSensorCo.TrampleTek_Blue
-    version: dev
+# esphome:
+#   name: ${name}
+#   friendly_name: ${friendly_name}
+#   name_add_mac_suffix: false
+#   project:
+#     name: AppliedSensorCo.TrampleTek_Blue
+#     version: dev
 
-esp32:
-  board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
+# esp32:
+#   board: esp32-c3-devkitm-1
+#   framework:
+#     type: arduino
 
-# Enable logging
-logger:
+# # Enable logging
+# logger:
 
-api:
+# api:
 
-ota:
-- platform: esphome
+# ota:
+# - platform: esphome
 
-wifi:
-  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ap:
-    ssid: TrampleTek Blue Fallback Hotspot
+# wifi:
+#   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+#   ap:
+#     ssid: TrampleTek Blue Fallback Hotspot
 
-dashboard_import:
-  package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
-  import_full_config: true
+# dashboard_import:
+#   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main
+#   import_full_config: true
 
-improv_serial:
+# improv_serial:
 
-esp32_improv:
-  authorizer: none
+# esp32_improv:
+#   authorizer: none
 
-web_server:
+# web_server:
 
-captive_portal:
+# captive_portal:
+
+#### KEEP EVERYTHING YOU HAVE ABOVE THIS LINE IN YOUR CODE, JUST REPLACE FROM HERE AND BELOW
 
 globals:
   - id: event_threshold
