@@ -1,6 +1,6 @@
 # This is the YAML that the ttb-sleep.factory.bin file is made from
 substitutions:
-  name: ttb-sleep
+  name: tt-sleep
   friendly_name: TTSleep
 
 esphome:
@@ -9,7 +9,7 @@ esphome:
   min_version: 2024.6.0
   name_add_mac_suffix: true
   project:
-    name: AppliedSensorCo.TrampleTek-SLeep
+    name: AppliedSensorCo.TrampleTek-Sleep
     version: dev
 
 esp32:
