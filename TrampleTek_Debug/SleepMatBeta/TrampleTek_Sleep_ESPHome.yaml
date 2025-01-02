@@ -77,6 +77,11 @@ globals:
     restore_value: yes
     initial_value: '2.5'
 
+  - id: sample_index
+    type: int
+    restore_value: no
+    initial_value: '0'
+
 binary_sensor:
   - platform: template
     name: "Mat Sensor"
@@ -278,6 +283,7 @@ interval:
 
         // Step 6: Check for calibration and Handle "on" and "off" states
         if (id(calibration_button).state) {
+          id(sample_index) = 0;  // Reset sampleIndex when calibration starts
           // Calibration mode: Track max and min values
           if (lowPassOutput > calibrationMax) {
             calibrationMax = lowPassOutput;
@@ -361,3 +367,104 @@ interval:
         id(matUpThresholdID) = dynamicUpperThreshold;
         previousIsOnState = id(sensorBoolValue);
         startUpFlag = false;
+
+  - interval: 30min
+    then:
+      lambda: |-
+        static float dailySamples[48];  // Buffer to store 24 hours of data (48 samples at 30-minute intervals)
+        static bool arrayFull = false; // Flag to indicate when the array is full
+        int sampleIndex = id(sample_index);  // Access global sampleIndex
+
+        // Debugging: Indicate entering the interval loop
+        ESP_LOGD("interval_30min", "Processing 30min interval loop");
+
+        // Step 1: Collect the current lowPassOutput and store it in the buffer
+        dailySamples[sampleIndex] = id(filteredMatSignal);
+        ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
+
+        sampleIndex++;
+        if (sampleIndex >= 48) {
+          id(sample_index) = 0;
+          arrayFull = true;
+          ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
+        } else {
+          id(sample_index) = sampleIndex; // Update the global sample index
+        }
+
+        // Step 2: Process the buffer once it's full
+        if (arrayFull) {
+          // Sort the array in ascending order
+          std::sort(dailySamples, dailySamples + 48);
+          ESP_LOGD("interval_30min", "Sorted dailySamples array");
+
+          // Step 3: Remove the top 5 and bottom 5 samples to exclude extreme values
+          float filteredSamples[38];
+          int filteredCount = 0;
+          for (int i = 5; i < 43; i++) {  // Keep elements from index 5 to 42 (inclusive)
+            filteredSamples[filteredCount++] = dailySamples[i];
+          }
+          ESP_LOGD("interval_30min", "Filtered extreme values, count: %d", filteredCount);
+
+          // Step 4: Identify the largest gap in the filtered data
+          float largestGap = 0;
+          int splitIndex = 0;
+          for (int i = 0; i < filteredCount - 1; i++) {
+            float gap = filteredSamples[i + 1] - filteredSamples[i];
+            if (gap > largestGap) {
+              largestGap = gap;
+              splitIndex = i;
+            }
+          }
+          ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
+
+          // Step 5: Check if the largest gap is valid
+          float minGap = 0.4 * (id(upper_limit_g) - id(lower_limit_g));
+          if (largestGap < minGap) {
+            ESP_LOGD("interval_30min", "No significant gap found, skipping threshold update");
+            arrayFull = false;  // Reset the arrayFull flag to continue collecting new samples
+            ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
+            return;  // No significant gap; likely no bed presence data
+          }
+
+          // Step 6: Split the data into lower and upper halves
+          float lowerHalf[38];
+          int lowerCount = 0;
+          for (int i = 0; i <= splitIndex; i++) {
+            lowerHalf[lowerCount++] = filteredSamples[i];
+          }
+
+          float upperHalf[38];
+          int upperCount = 0;
+          for (int i = splitIndex + 1; i < filteredCount; i++) {
+            upperHalf[upperCount++] = filteredSamples[i];
+          }
+          ESP_LOGD("interval_30min", "Split data into lower (%d) and upper (%d) halves", lowerCount, upperCount);
+
+          // Step 7: Calculate weighted averages for thresholds
+          float newLowerThreshold = 0.0;
+          for (int i = 0; i < lowerCount; i++) {
+            newLowerThreshold += lowerHalf[i];
+          }
+          newLowerThreshold /= lowerCount;
+
+          float newUpperThreshold = 0.0;
+          for (int i = 0; i < upperCount; i++) {
+            newUpperThreshold += upperHalf[i];
+          }
+          newUpperThreshold /= upperCount;
+
+          float alpha = 0.85;  // Weight for the new value
+          float updatedLowerThreshold = alpha * newLowerThreshold + (1 - alpha) * id(lower_limit_g);
+          float truncatedLowerThreshold = ((int)(updatedLowerThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
+
+          float updatedUpperThreshold = alpha * newUpperThreshold + (1 - alpha) * id(upper_limit_g);
+          float truncatedUpperThreshold = ((int)(updatedUpperThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
+          
+          ESP_LOGD("interval_30min", "Updated thresholds - Lower: %.3f, Upper: %.3f", id(lower_limit_g), id(upper_limit_g));
+
+          // Reset the sample array for the next 24 hours
+          arrayFull = false;
+          ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
+        }
