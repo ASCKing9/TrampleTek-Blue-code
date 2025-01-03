@@ -453,6 +453,11 @@ interval:
           }
           newUpperThreshold /= upperCount;
 
+          // Calculate midpoint and adjust thresholds closer together
+          float midpoint = (newLowerThreshold + newUpperThreshold) / 2.0;
+          newLowerThreshold = newLowerThreshold + 0.25 * (midpoint - newLowerThreshold);
+          newUpperThreshold = newUpperThreshold - 0.25 * (newUpperThreshold - midpoint);
+
           float alpha = 0.85;  // Weight for the new value
           float updatedLowerThreshold = alpha * newLowerThreshold + (1 - alpha) * id(lower_limit_g);
           float truncatedLowerThreshold = ((int)(updatedLowerThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
