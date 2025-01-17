@@ -419,3 +419,16 @@ interval:
       bufferIndex = (bufferIndex + 1) % sliderWindowSize;
       previous_matDataAvg = matDataAvg;
       startUpFlag = 0;
+
+- interval: 1s
+  then:
+    lambda: |-
+      // Threshold variables
+      static bool light = true;
+      if (light) {
+        neopixelWrite(7, 50, 50, 0);  // On
+        light = false;
+      }else{
+        neopixelWrite(7, 0, 0, 0);  // Off
+        light = true;
+      }
