@@ -1,6 +1,6 @@
 substitutions:
-  name: ttb-mat
-  friendly_name: TTBlue
+  name: ttb-mat-exweight
+  friendly_name: TTBlue ExWeight
 
 esphome:
   name: ${name}
@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: dev
+    version: 0.1.0
 
   on_boot:
     priority: -10

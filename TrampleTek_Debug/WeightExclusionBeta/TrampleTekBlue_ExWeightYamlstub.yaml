@@ -1,7 +1,7 @@
 # This is the YAML that the ttb-mat_exweight.factory.bin file is made from
 substitutions:
-  name: ttb-mat
-  friendly_name: TTBlue
+  name: ttb-mat-exweight
+  friendly_name: TTBlue ExWeight
 
 esphome:
   name: "${name}"
@@ -10,7 +10,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek-Blue
-    version: dev
+    version: 0.1.0
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -26,6 +26,15 @@ api:
 # Allow Over-The-Air updates
 ota:
   - platform: esphome
+  - platform: http_request
+    id: ota_http_request
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/WeightExclusionBeta/TrampleTekBlue_ExWeight.json
+    update_interval: 1m
 
 # Allow provisioning Wi-Fi via serial
 improv_serial:
