@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: 0.1.0
+    version: 0.1.1
 
   on_boot:
     priority: -10
