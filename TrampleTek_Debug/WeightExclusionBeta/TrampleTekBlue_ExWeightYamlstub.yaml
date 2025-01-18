@@ -10,7 +10,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek-Blue
-    version: 0.1.0
+    version: 0.1.1
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -34,7 +34,10 @@ update:
     id: update_http_request
     name: Firmware
     source: https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/WeightExclusionBeta/TrampleTekBlue_ExWeight.json
-    update_interval: 1m
+    update_interval: 30s
+
+http_request:
+  verify_ssl: false
 
 # Allow provisioning Wi-Fi via serial
 improv_serial:
@@ -59,3 +62,18 @@ esp32_improv:
 
 # To have a "next url" for improv serial
 web_server:
+
+interval:
+- interval: 1s
+  then:
+    - lambda: |-
+        // Threshold variables
+        static bool light = true;
+        if (light) {
+          neopixelWrite(7, 0, 0, 50);  // On
+          light = false;
+        }else{
+          neopixelWrite(7, 0, 0, 0);  // Off
+          light = true;
+        }
+  
