@@ -8,7 +8,7 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/WeightExclusionBeta/ttb-mat-exweight.ota.bin",
-        "md5": "318e6abb1ba7d943d19cfcfcc436909f"        
+        "md5": "876d209cbc62f965d176744fd5f41f79"        
       },
       "parts": [
         {
