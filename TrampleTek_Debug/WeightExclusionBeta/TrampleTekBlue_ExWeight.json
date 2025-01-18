@@ -12,7 +12,7 @@
       },
       "parts": [
         {
-          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/WeightExclusionBeta/ttb-mat_exweight.factory.bin",
+          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/WeightExclusionBeta/ttb-mat-exweight.factory.bin",
           "offset": 0
         }
       ]
