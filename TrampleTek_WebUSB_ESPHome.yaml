@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: dev
+    version: 0.1.0
 
   on_boot:
       priority: -10
@@ -35,6 +35,18 @@ api:
 
 ota:
   - platform: esphome
+  - platform: http_request
+    id: ota_http_request
+  
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTekBlue.json
+    update_interval: 6h
+
+http_request:
+  verify_ssl: false
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
@@ -74,6 +86,10 @@ globals:
     type: int
     restore_value: yes
     initial_value: '4'
+  - id: sensorBoolValue
+    type: bool
+    initial_value: 'false'
+    restore_value: yes
 
 binary_sensor:
   - platform: template
@@ -235,6 +251,7 @@ interval:
 
         // on first run through fill the matDataBuffer with the restored value if possible
         if (startUpFlag) {
+          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           for (int i = 0; i < sliderWindowSize; i++) {
             matDataBuffer[i] = id(matDataSampledAvg);
           }
@@ -329,16 +346,15 @@ interval:
 
         if (matDataAvg < matDownThreshold && matGradientDownApproved) {
           justFlippedOn = true;
-          // id(pressure_trigger).turn_on();
+          id(sensorBoolValue) = true;
           id(Mat_binary_trigger).publish_state(true);
         }
 
         if (matDataAvg > matUpThreshold && matGradientUpApproved) {
           justFlippedOff = true;
-          // id(pressure_trigger).turn_off();
+          id(sensorBoolValue) = false;
           id(Mat_binary_trigger).publish_state(false);
-        }
-        
+        }        
 
         if (id(calibration_button).state == true) {
           if (calibrationFirstLoop == true) {
