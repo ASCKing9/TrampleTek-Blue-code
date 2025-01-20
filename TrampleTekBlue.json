@@ -8,7 +8,7 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.ota.bin",
-        "md5": "6c32b881437049caf56b1bf690eb6ece"        
+        "md5": "cda12af58c9fda8c8c7d53bdca29ecac"        
       },
       "parts": [
         {
