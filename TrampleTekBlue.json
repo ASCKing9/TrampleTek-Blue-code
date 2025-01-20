@@ -1,11 +1,15 @@
 {
   "name": "TrampleTek Blue Firmware",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
     {
       "chipFamily": "ESP32-C3",
+      "ota": {
+        "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.ota.bin",
+        "md5": "6c32b881437049caf56b1bf690eb6ece"        
+      },
       "parts": [
         {
           "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.factory.bin",
