@@ -46,7 +46,7 @@ esphome:
   friendly_name: [The name you gave the device]
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: 0.1.0
+    version: 0.1.1
   on_boot: #!!!!!!!!!!! YOU WILL NEED TO ADD THIS on_boot SECTION TO THE CODE!!!!!!!
       priority: -10
       then:
