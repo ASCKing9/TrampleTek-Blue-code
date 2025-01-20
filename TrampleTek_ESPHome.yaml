@@ -44,6 +44,9 @@ wifi:
 esphome:
   name: [Your internal devices name]
   friendly_name: [The name you gave the device]
+  project:
+    name: AppliedSensorCo.TrampleTek_Blue
+    version: 0.1.0
   on_boot: #!!!!!!!!!!! YOU WILL NEED TO ADD THIS on_boot SECTION TO THE CODE!!!!!!!
       priority: -10
       then:
@@ -135,6 +138,7 @@ number:
   - platform: template
     name: "Sensitivity"
     id: step_threshold_number
+    device_class: "voltage"
     unit_of_measurement: "V"
     update_interval: never
     min_value: 0.01
@@ -185,6 +189,8 @@ number:
 #     name: "Pressure Voltage"
 #     id: visible_pressure_voltage
 #     unit_of_measurement: "V"
+#     device_class: "voltage"
+#     state_class: "measurement"
 #     icon: "mdi:sine-wave"
 #     accuracy_decimals: 3
 #     update_interval: 1s

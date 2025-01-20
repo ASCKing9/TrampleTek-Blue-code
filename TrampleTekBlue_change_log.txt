@@ -5,3 +5,5 @@ Ver 0.1.0
 
 Ver 0.1.1
  - Just HTTP ota testing, no code changes
+ - Added device_class: "voltage" for all voltage entities.
+ - Added state_class: "measurement" for the sensor entities with voltage.
