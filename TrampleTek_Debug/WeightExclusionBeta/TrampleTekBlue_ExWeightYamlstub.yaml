@@ -76,4 +76,3 @@ interval:
           neopixelWrite(7, 0, 0, 0);  // Off
           light = true;
         }
-  

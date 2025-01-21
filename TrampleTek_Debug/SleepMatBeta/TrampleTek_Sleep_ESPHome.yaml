@@ -82,6 +82,16 @@ globals:
     restore_value: no
     initial_value: '0'
 
+  - id: on_validation
+    type: int
+    restore_value: yes
+    initial_value: '5'
+
+  - id: off_validation
+    type: int
+    restore_value: yes
+    initial_value: '10'
+
 binary_sensor:
   - platform: template
     name: "Mat Sensor"
@@ -137,6 +147,40 @@ number:
       then:
         - lambda: |-
             id(lower_limit_g) = x;
+
+  - platform: template
+    name: "Transition to On Delay"
+    id: on_validation_number
+    device_class: "duration"
+    unit_of_measurement: "s"
+    update_interval: never
+    initial_value: 5
+    min_value: 1
+    max_value: 30
+    step: 1
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            id(on_validation) = x;
+
+  - platform: template
+    name: "Transition to Off Delay"
+    id: off_validation_number
+    device_class: "duration"
+    unit_of_measurement: "s"
+    update_interval: never
+    initial_value: 10
+    min_value: 1
+    max_value: 60
+    step: 1
+    optimistic: true
+    restore_value: true
+    on_value:
+      then:
+        - lambda: |-
+            id(off_validation) = x;
 
 # Un-comment this sensor to watch the sensor is real-time
 sensor:            
@@ -217,7 +261,11 @@ interval:
         // Off transition validation
         static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
         static bool validatingOffTransition = false;              // Flag to indicate "off" validation period
-        const unsigned long offValidationDuration = 10000;         // 5-second timer for "off" transition
+        int offValidationDuration = id(off_validation) * 1000;    // timer for "off" transition, in milliseconds
+
+        static unsigned long onValidationStartTime = 0;           // Start time for "on" validation timer
+        static bool validatingOnTransition = false;               // Flag to indicate "on" validation period
+        int onValidationDuration = id(on_validation) * 1000;      // timer for "on" transition, in milliseconds
 
         // Calibration variables
         static float calibrationMax = 0.0;    // Set to minimum possible signal value
@@ -280,7 +328,7 @@ interval:
         thresholdPrevOutput = thresholdSignal;
 
         // Step 4: Update Upper dynamic threshold
-        dynamicUpperThreshold = constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        dynamicUpperThreshold = fixedUpperLimit; // testing the removal of "= constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);"
         
         // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
         if (millis() - lastEventTime > noEventThreshold) {
@@ -306,15 +354,8 @@ interval:
           }
         } else {
           if (isOn) {
-            // Immediate "off" if low-pass signal exceeds the fixed upper limit
-            if (lowPassOutput > fixedUpperLimit) {
-              isOn = false;
-              offValidationStartTime = 0;
-              validatingOffTransition = false;
-              lastEventTime = millis();
-            }
-            // Validate "off" transition if the low-pass signal crosses the dynamic upper threshold
-            else if (lowPassOutput > dynamicUpperThreshold) {
+            // Immediate "off" if low-pass signal exceeds the dynamic upper threshold
+            if (lowPassOutput > dynamicUpperThreshold) {
               if (!validatingOffTransition) {
                 // Start the validation timer
                 offValidationStartTime = millis();
@@ -334,8 +375,21 @@ interval:
           } else {
             // Transition to "on" if low-pass signal crosses dynamic lower threshold
             if (lowPassOutput < dynamicLowerThreshold) {
-              isOn = true;
-              lastEventTime = millis();
+              if (!validatingOnTransition) {
+                // Start the validation timer
+                onValidationStartTime = millis();
+                validatingOnTransition = true;
+              } else if (millis() - onValidationStartTime >= onValidationDuration) {
+                // Timer expired: Turn "on"
+                isOn = true;
+                onValidationStartTime = 0;
+                validatingOnTransition = false;
+                lastEventTime = millis();
+              }
+            } else {
+              // Cancel validation if signal rises above dynamic lower threshold
+              onValidationStartTime = 0;
+              validatingOnTransition = false;
             }
           }
         }
@@ -359,7 +413,7 @@ interval:
           float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(lower_limit_voltage).publish_state(truncatedCaliValue);
 
-          calibrationMax  = calibrationMax - (signalDifference * 0.5); // shift upper limit down by 50% of signalDifference
+          calibrationMax  = calibrationMax - (signalDifference * 0.4); // shift upper limit down by 40% of signalDifference
           truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(upper_limit_voltage).publish_state(truncatedCaliValue);
 

@@ -1,11 +1,15 @@
 {
   "name": "TrampleTek Sleep Firmware",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
     {
       "chipFamily": "ESP32-C3",
+      "ota": {
+        "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.ota.bin",
+        "md5": "5a655f97fab03988b2d4fe76a9b4880a"        
+      },
       "parts": [
         {
           "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.factory.bin",
