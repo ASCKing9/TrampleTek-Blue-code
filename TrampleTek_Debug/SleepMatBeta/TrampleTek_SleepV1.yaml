@@ -464,7 +464,7 @@ interval:
         previousIsOnState = id(sensorBoolValue);
         startUpFlag = false;
 
-  - interval: 500ms
+  - interval: 30min
     then:
       lambda: |-
         static float dailySamples[48];  // Buffer to store 24 hours of data (48 samples at 30-minute intervals)
