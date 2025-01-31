@@ -1,6 +1,6 @@
 {
   "name": "TrampleTek Sleep Firmware",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
@@ -8,8 +8,9 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.ota.bin",
-        "md5": "5a655f97fab03988b2d4fe76a9b4880a",
-        "summary": "Testing for http ota working for mock 0.1.1 release."        
+        "md5": "3acf85e10b7f1562c83356f92a48cea2",
+        "summary": "Added wifi signal, CPU temp, and reset counter to HA UI, cut out excessive debug logging",
+        "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
       },
       "parts": [
         {

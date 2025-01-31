@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek-Sleep
-    version: 0.1.0
+    version: 0.1.1
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -98,7 +98,7 @@ globals:
   - id: on_validation
     type: int
     restore_value: yes
-    initial_value: '5'
+    initial_value: '3'
 
   - id: off_validation
     type: int
@@ -109,6 +109,11 @@ globals:
     type: int
     restore_value: yes
     initial_value: '6'
+
+  - id: reset_counter
+    type: int
+    restore_value: yes
+    initial_value: '0'
 
 binary_sensor:
   - platform: template
@@ -253,6 +258,19 @@ sensor:
     lambda: |-
       return id(matUpThresholdID);
 
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_db
+    update_interval: 60s
+
+  - platform: internal_temperature
+    name: "Internal Temperature"
+
+  - platform: template
+    name: "Reset Counter"
+    id: reset_counter_sensor
+    accuracy_decimals: 0
+
 switch:
   - platform: template
     name: "Calibration (turn on, lay on bed for at least 30s, get out of bed, turn off)"
@@ -335,7 +353,11 @@ interval:
           lowPassPrevOutput = initialVoltage;
           thresholdPrevInput = initialVoltage;
           thresholdPrevOutput = initialVoltage;
-          
+
+          id(reset_counter) += 1;
+          if(id(reset_counter) > 5) {id(reset_counter) = 0;}
+          id(reset_counter_sensor).publish_state(id(reset_counter));
+                    
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           id(sensitivity_number).publish_state(id(event_threshold));
           id(lower_limit_voltage).publish_state(id(lower_limit_g));
@@ -472,17 +494,17 @@ interval:
         int sampleIndex = id(sample_index);  // Access global sampleIndex
 
         // Debugging: Indicate entering the interval loop
-        ESP_LOGD("interval_30min", "Processing 30min interval loop");
+        //ESP_LOGD("interval_30min", "Processing 30min interval loop");
 
         // Step 1: Collect the current lowPassOutput and store it in the buffer
         dailySamples[sampleIndex] = id(filteredMatSignal);
-        ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
+        //ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
 
         sampleIndex++;
         if (sampleIndex >= 48) {
           id(sample_index) = 0;
           arrayFull = true;
-          ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
+          //ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
         } else {
           id(sample_index) = sampleIndex; // Update the global sample index
         }
@@ -491,7 +513,7 @@ interval:
         if (arrayFull) {
           // Sort the array in ascending order
           std::sort(dailySamples, dailySamples + 48);
-          ESP_LOGD("interval_30min", "Sorted dailySamples array");
+          //ESP_LOGD("interval_30min", "Sorted dailySamples array");
 
           // Step 3: Determine if the split index falls in the critical range
           int splitIndex = 0;
@@ -505,7 +527,7 @@ interval:
               splitIndex = i;
             }
           }
-          ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
+          //ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
 
           // Step 4: Remove extreme values if the split index is in the critical range
           bool criticalRange = (splitIndex <= 3 || splitIndex >= 44);
@@ -516,7 +538,7 @@ interval:
             for (int i = 4; i < 44; i++) {  // Remove top and bottom 4 values
               filteredSamples[filteredCount++] = dailySamples[i];
             }
-            ESP_LOGD("interval_30min", "Filtered extreme values due to critical range");
+            //ESP_LOGD("interval_30min", "Filtered extreme values due to critical range");
 
             // Recalculate the largest gap with the reduced array
             splitIndex = 0;
@@ -528,20 +550,20 @@ interval:
                 splitIndex = i;
               }
             }
-            ESP_LOGD("interval_30min", "Recalculated largest gap: %.3f at index %d", largestGap, splitIndex);
+            //ESP_LOGD("interval_30min", "Recalculated largest gap: %.3f at index %d", largestGap, splitIndex);
 
           } else {
             for (int i = 0; i < 48; i++) {  // Keep all values if not in critical range
               filteredSamples[filteredCount++] = dailySamples[i];
             }
-            ESP_LOGD("interval_30min", "Retained all values as split index not in critical range");
+            //ESP_LOGD("interval_30min", "Retained all values as split index not in critical range");
           }
 
           // Check if the largest gap meets the minimum gap requirement
           float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.5;
           if (largestGap < minGap) {
-            ESP_LOGD("interval_30min", "Recalculated largest gap %.3f is smaller than minGap %.3f, thresholds will not be updated", largestGap, minGap);
-            ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
+            //ESP_LOGD("interval_30min", "Recalculated largest gap %.3f is smaller than minGap %.3f, thresholds will not be updated", largestGap, minGap);
+            //ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
             arrayFull = false;  // Reset array for the next cycle
             return;  // No significant gap; likely no bed presence data
           }
@@ -558,7 +580,7 @@ interval:
           for (int i = splitIndex + 1; i < filteredCount; i++) {
             upperHalf[upperCount++] = filteredSamples[i];
           }
-          ESP_LOGD("interval_30min", "Split data into lower (%d) and upper (%d) halves", lowerCount, upperCount);
+          //ESP_LOGD("interval_30min", "Split data into lower (%d) and upper (%d) halves", lowerCount, upperCount);
 
           // Step 6: Calculate percentiles for thresholds
           int lower80thIndex = (int)(lowerCount * 0.8) - 1;
@@ -582,9 +604,9 @@ interval:
           float truncatedUpperThreshold = ((int)(updatedUpperThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
           id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
           
-          ESP_LOGD("interval_30min", "Updated thresholds - Lower: %.3f, Upper: %.3f", id(lower_limit_g), id(upper_limit_g));
+          //ESP_LOGD("interval_30min", "Updated thresholds - Lower: %.3f, Upper: %.3f", id(lower_limit_g), id(upper_limit_g));
 
           // Reset the sample array for the next 24 hours
           arrayFull = false;
-          ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
+          //ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
         }

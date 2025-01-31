@@ -1,0 +1,13 @@
+Ver 0.1.0
+ - Automatic update notifications and HTTP ota enabled
+ - Added several UI elements for people to tune to their desired accuracy and delay:
+    - "24hr Dynamic Threshold reduction factor" This changes how close together the daily dynamic thresholds will be, higher is closer together (6 is default)
+    - "Transition to on Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "on" state
+    - "Transition to off Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "off" state
+
+Ver 0.1.1
+ - Change the default "Transition to On Delay" to 3 seconds, down from 5.
+ - Add a reset counter to tell when the device power cycles (trying to capture unintentional restarts)
+ - Added a wifi signal strength UI element
+ - Added a CPU internal temperature UI element 
+ - Removed all the extra debug logging, was worried it was causing connectivity issues sending to much in a short time period
