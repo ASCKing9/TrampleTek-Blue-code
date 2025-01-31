@@ -7,7 +7,7 @@ Ver 0.1.0
 
 Ver 0.1.1
  - Change the default "Transition to On Delay" to 3 seconds, down from 5.
- - Add a reset counter to tell when the device power cycles (trying to capture unintentional restarts)
+ - Add a reset counter to tell when the device power cycles (trying to capture unintentional restarts), it counts to 5 and then the next restart is set back to 0.
  - Added a wifi signal strength UI element
  - Added a CPU internal temperature UI element 
  - Removed all the extra debug logging, was worried it was causing connectivity issues sending to much in a short time period
