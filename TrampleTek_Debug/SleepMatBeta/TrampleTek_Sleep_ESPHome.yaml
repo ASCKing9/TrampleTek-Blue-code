@@ -40,6 +40,8 @@ http_request:
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
   reboot_timeout: 60s
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   ap:
     ssid: "TTSleep Fallback Hotspot"
 

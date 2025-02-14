@@ -50,8 +50,10 @@ http_request:
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   ap:
-    ssid: "TrampleTek Blue Fallback Hotspot"
+    ssid: "TTBlue Fallback Hotspot"
 
 dashboard_import:
   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_WebUSB_ESPHome.yaml@main

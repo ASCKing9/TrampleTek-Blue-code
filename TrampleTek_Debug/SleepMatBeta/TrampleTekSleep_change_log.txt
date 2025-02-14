@@ -3,7 +3,7 @@ Ver 0.1.2
  - Changed the calibration routine so the lower threshold adjustment to be closer to the upper limit, helps to better capture "in bed" events after a calibration.
  - Reduced the required change in "in bed" and "out of bed" signal from 50% of the current difference in the upper and lower thresholds to 25%. Hoping to catch more subtle changes in the signal over time. 
  - Reduced some unneeded variables in the main signal logic loop: "previousIsOnState" and "IsOn" may have be causing an issue with not updating the binary sensor state correctly.
- - Testing the change of "name_add_mac_suffix: true" to "name_add_mac_suffix: false" to help with people 'taking control' of a device in ESPHome
+ - - Added secret wifi credentials into the wifi sections
 
 Ver 0.1.1
  - Change the default "Transition to On Delay" to 3 seconds, down from 5.
