@@ -1,9 +1,9 @@
-Ver 0.1.0
- - Automatic update notifications and HTTP ota enabled
- - Added several UI elements for people to tune to their desired accuracy and delay:
-    - "24hr Dynamic Threshold reduction factor" This changes how close together the daily dynamic thresholds will be, higher is closer together (6 is default)
-    - "Transition to on Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "on" state
-    - "Transition to off Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "off" state
+Ver 0.1.2
+ - Added reboot_timeout to api (180s) and wifi (60s), to better catch which one is causing more issues.
+ - Changed the calibration routine so the lower threshold adjustment to be closer to the upper limit, helps to better capture "in bed" events after a calibration.
+ - Reduced the required change in "in bed" and "out of bed" signal from 50% of the current difference in the upper and lower thresholds to 25%. Hoping to catch more subtle changes in the signal over time. 
+ - Reduced some unneeded variables in the main signal logic loop: "previousIsOnState" and "IsOn" may have be causing an issue with not updating the binary sensor state correctly.
+ - Testing the change of "name_add_mac_suffix: true" to "name_add_mac_suffix: false" to help with people 'taking control' of a device in ESPHome
 
 Ver 0.1.1
  - Change the default "Transition to On Delay" to 3 seconds, down from 5.
@@ -11,3 +11,10 @@ Ver 0.1.1
  - Added a wifi signal strength UI element
  - Added a CPU internal temperature UI element 
  - Removed all the extra debug logging, was worried it was causing connectivity issues sending to much in a short time period
+
+Ver 0.1.0
+ - Automatic update notifications and HTTP ota enabled
+ - Added several UI elements for people to tune to their desired accuracy and delay:
+    - "24hr Dynamic Threshold reduction factor" This changes how close together the daily dynamic thresholds will be, higher is closer together (6 is default)
+    - "Transition to on Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "on" state
+    - "Transition to off Delay" is the amount of time the sensor must be consecutively above the defined threshold before triggering the "off" state
