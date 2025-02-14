@@ -41,7 +41,7 @@ wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
   reboot_timeout: 60s
   ap:
-    ssid: "TrampleTek Sleep Fallback Hotspot"
+    ssid: "TTSleep Fallback Hotspot"
 
 dashboard_import:
   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep_ESPHome.yaml@main
