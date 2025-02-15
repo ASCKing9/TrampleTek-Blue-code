@@ -1,6 +1,6 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
-Ver 0.1.2
+Ver 0.1.2 (2-15-25)
  - Added reboot_timeout to api (180s) and wifi (60s), to better catch which one is causing more issues.
  - Changed the calibration routine so the lower threshold adjustment to be closer to the upper limit, helps to better capture "in bed" events after a calibration.
  - Reduced the required change in "in bed" and "out of bed" signal from 50% of the current difference in the upper and lower thresholds to 25%. Hoping to catch more subtle changes in the signal over time. 
