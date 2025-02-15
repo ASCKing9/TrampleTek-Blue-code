@@ -8,6 +8,7 @@ Ver 0.1.2
  - Added secret wifi credentials into the wifi sections
  - Moved "Sensitivity" slider into the diagnostic area of the device, renamed variable in YAML for clarity
  - Renamed "24hr Dynamic Threshold reduction factor" to "Threshold Convergence Factor" so it was a little more clear-ish what it is.
+ - Threshold Convergence Factor is now adjustable and will update the thresholds immediately instead of waiting for the next dynamic threshold evaluation.
 
 Ver 0.1.1
  - Change the default "Transition to On Delay" to 3 seconds, down from 5.
