@@ -59,7 +59,7 @@ web_server:
 captive_portal:
 
 globals:
-  - id: event_threshold
+  - id: sensitivity_threshold
     type: int
     restore_value: yes
     initial_value: '3'
@@ -87,12 +87,12 @@ globals:
   - id: lower_limit_g
     type: float
     restore_value: yes
-    initial_value: '1.5'
+    initial_value: '1.8'
     
   - id: upper_limit_g
     type: float
     restore_value: yes
-    initial_value: '2.5'
+    initial_value: '1.9'
 
   - id: sample_index
     type: int
@@ -119,7 +119,7 @@ globals:
     restore_value: yes
     initial_value: '10'
 
-  - id: dynamic_threshold_reduction
+  - id: threshold_convergence_factor
     type: int
     restore_value: yes
     initial_value: '6'
@@ -136,9 +136,10 @@ binary_sensor:
 
 number:
   - platform: template
-    name: "Sensitivity (Higher is more sensitive to motion)"
+    name: "Detection Sensitivity (Higher is more sensitive)"
     id: sensitivity_number
     device_class: "voltage"
+    entity_category: "diagnostic"
     update_interval: never
     initial_value: 3
     min_value: 1
@@ -149,7 +150,7 @@ number:
     on_value:
       then:
         - lambda: |-
-            id(event_threshold) = x;
+            id(sensitivity_threshold) = x;
   
   - platform: template
     name: "Empty Bed value"
@@ -220,8 +221,8 @@ number:
             id(off_validation) = x;
 
   - platform: template
-    name: "24hr Dynamic Threshold reduction factor"
-    id: dynamic_threshold_reduction_number
+    name: "Threshold Convergence Factor"
+    id: threshold_convergence_factor_number
     update_interval: never
     initial_value: 6
     min_value: 1
@@ -232,7 +233,21 @@ number:
     on_value:
       then:
         - lambda: |-
-            id(dynamic_threshold_reduction) = x;
+            // Calculate midpoint and adjust thresholds closer or farther away
+            float midpoint = (id(lower_limit_g) + id(upper_limit_g)) / 2.0;
+            // Back calculate the max upper and lower threshold, there will be rounding error here
+            float originalLowerThreshold = (midpoint - (midpoint - id(lower_limit_g)) / (1 - id(threshold_convergence_factor) * 0.1));
+            float originalUpperThreshold = ((id(upper_limit_g) - midpoint) / (1 - id(threshold_convergence_factor) * 0.1) + midpoint);
+            // Adjust threshold around midpoint based on new input to slider 'x'
+            float newLowerThreshold = originalLowerThreshold + (x * 0.1) * (midpoint - originalLowerThreshold);
+            float newUpperThreshold = originalUpperThreshold - (x * 0.1) * (originalUpperThreshold - midpoint);
+
+            /// truncate values to 3 decimals and update thresholds
+            id(lower_limit_voltage).publish_state(((int)(newLowerThreshold * 1000)) / 1000.0);
+            id(upper_limit_voltage).publish_state(((int)(newUpperThreshold * 1000)) / 1000.0);
+            
+            id(threshold_convergence_factor) = x;
+            
 
 # Un-comment this sensor to watch the sensor is real-time
 sensor:            
@@ -348,7 +363,7 @@ interval:
         float dynamicLowerThreshold;   // Lower dynamic threshold
 
         // Threshold offset variables
-        float dynamicThresholdOffset = id(event_threshold) * sensitivityBase; // Offset for dynamic thresholds relative to the threshold signal
+        float dynamicThresholdOffset = id(sensitivity_threshold) * sensitivityBase; // Offset for dynamic thresholds relative to the threshold signal
         float longTermThresholdOffset = dynamicThresholdOffset / 2; // Offset for lower threshold after long-term stability
 
         // Analog pin reading on Lolin C3-Mini board
@@ -369,7 +384,7 @@ interval:
           id(reset_counter_sensor).publish_state(id(reset_counter));
                     
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          id(sensitivity_number).publish_state(id(event_threshold));
+          id(sensitivity_number).publish_state(id(sensitivity_threshold));
           id(lower_limit_voltage).publish_state(id(lower_limit_g));
           id(upper_limit_voltage).publish_state(id(upper_limit_g));
         }
@@ -593,8 +608,8 @@ interval:
 
           // Calculate midpoint and adjust thresholds closer together
           float midpoint = (newLowerThreshold + newUpperThreshold) / 2.0;
-          newLowerThreshold = newLowerThreshold + (id(dynamic_threshold_reduction) * 0.1) * (midpoint - newLowerThreshold);
-          newUpperThreshold = newUpperThreshold - (id(dynamic_threshold_reduction) * 0.1) * (newUpperThreshold - midpoint);
+          newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+          newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
 
           float alpha = 0.85;  // Weight for the new value
           float updatedLowerThreshold = alpha * newLowerThreshold + (1 - alpha) * id(lower_limit_g);

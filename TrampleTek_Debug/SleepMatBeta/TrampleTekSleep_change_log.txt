@@ -1,9 +1,13 @@
+Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
+
 Ver 0.1.2
  - Added reboot_timeout to api (180s) and wifi (60s), to better catch which one is causing more issues.
  - Changed the calibration routine so the lower threshold adjustment to be closer to the upper limit, helps to better capture "in bed" events after a calibration.
  - Reduced the required change in "in bed" and "out of bed" signal from 50% of the current difference in the upper and lower thresholds to 25%. Hoping to catch more subtle changes in the signal over time. 
  - Reduced some unneeded variables in the main signal logic loop: "previousIsOnState" and "IsOn" may have be causing an issue with not updating the binary sensor state correctly.
- - - Added secret wifi credentials into the wifi sections
+ - Added secret wifi credentials into the wifi sections
+ - Moved "Sensitivity" slider into the diagnostic area of the device, renamed variable in YAML for clarity
+ - Renamed "24hr Dynamic Threshold reduction factor" to "Threshold Convergence Factor" so it was a little more clear-ish what it is.
 
 Ver 0.1.1
  - Change the default "Transition to On Delay" to 3 seconds, down from 5.
