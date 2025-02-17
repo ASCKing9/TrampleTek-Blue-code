@@ -1,6 +1,6 @@
 {
   "name": "TrampleTek Sleep Firmware",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
@@ -8,8 +8,8 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.ota.bin",
-        "md5": "47d2f2b7618a18e81ac8b3c24a559e0e",
-        "summary": "Dynamic thresholds improvements (update every 8hr, persists over reboots, slider updates immediately), reduced reboot times for api (180s) and wifi (60s) errors, fixed 'take control' issues, other small improvements",
+        "md5": "bcf7fd37f8255cba2df0663d27f9c223",
+        "summary": "0.1.3 is a hotfix for devices losing wifi credentials after OTA. If you updated to 0.1.2 you will likely need to reinstall 0.1.3 using the USB cable (but after that OTA will work again, probably, I promise :) )",
         "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
       },
       "parts": [

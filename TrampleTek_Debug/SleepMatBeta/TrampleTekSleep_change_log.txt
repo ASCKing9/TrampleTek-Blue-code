@@ -1,5 +1,9 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
+Ver 0.1.3 (hotfix - 2-17-25)
+ - When I added the "ssid: !secret wifi_ssid" and "password: !secret wifi_password" into the tt-sleep.factory.bin and tt-sleep.ota.bin it reset all the wifi credentials and without the credentials the device couldn't connect to ESPHome to get the Secret's information.
+ - Removed these from the .bin files but kept them in the online YAML so people could "take control" and be able to reconnect the device because "take control" also was removing the wifi credentials.
+
 Ver 0.1.2 (2-15-25)
  - Added reboot_timeout to api (180s) and wifi (60s), to better catch which one is causing more issues.
  - Changed the calibration routine so the lower threshold adjustment to be closer to the upper limit, helps to better capture "in bed" events after a calibration.

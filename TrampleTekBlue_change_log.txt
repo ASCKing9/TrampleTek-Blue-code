@@ -1,4 +1,8 @@
-Ver 0.1.1
+ Ver 0.1.2 (In progress 2-16-25)
+ - Moved voltage measurement to diagnostic area, added slider for voltage measurement updating
+ - Added reset counter, internal temperature, wifi signal to diagnostic area of device
+
+ Ver 0.1.1
  - Just HTTP ota testing, no code changes
  - Added device_class: "voltage" for all voltage entities.
  - Added state_class: "measurement" for the sensor entities with voltage.
