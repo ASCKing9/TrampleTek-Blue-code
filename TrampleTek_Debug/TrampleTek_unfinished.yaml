@@ -185,7 +185,7 @@ number:
             }
 
   - platform: template
-    name: "Voltage measurement update rate"
+    name: "Voltage measurement update rate (0 is off)"
     id: volt_update_interval_number
     device_class: "duration"
     unit_of_measurement: "s"
