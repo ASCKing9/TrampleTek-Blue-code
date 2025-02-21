@@ -9,7 +9,7 @@
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.ota.bin",
         "md5": "86e89bab9c03b17a1c69f40cb2dc0db8",
-        "summary": "Added several diagnostic entities, read change log for details. If you have 'taken control' of your mat and you use this OTA update, you may need to give your WiFi credentials through improv bluetooth, USB and https://web.esphome.io/, or fall back hotspot 'TTBlue Fallback Hotspot'.",
+        "summary": "Added several diagnostic entities. If you have 'taken control' of your mat and use OTA update, you may need to give your WiFi credentials through improv bluetooth, USB and https://web.esphome.io/, or the TTB fall back hotspot.",
         "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue_change_log.txt"                
       },
       "parts": [
