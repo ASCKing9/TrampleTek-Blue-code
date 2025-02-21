@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: 0.1.1
+    version: 0.1.2
 
   on_boot:
       priority: -10
@@ -32,6 +32,7 @@ esp32:
 logger:
 
 api:
+  reboot_timeout: 180s
 
 ota:
   - platform: esphome
@@ -50,6 +51,7 @@ http_request:
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  reboot_timeout: 60s
   ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
   password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
   ap:
@@ -73,25 +75,40 @@ globals:
     type: float
     restore_value: yes
     initial_value: '0.04'
+
   - id: matGradientReq
     type: float
     restore_value: yes
     initial_value: '0.12'
+
   - id: matDataSampledAvg
     type: float
     restore_value: yes
     initial_value: '1.8'
+
   - id: selectFlag
     type: bool
     initial_value: 'false'
+
   - id: dropdownSelectIndex
     type: int
     restore_value: yes
     initial_value: '4'
+
   - id: sensorBoolValue
     type: bool
     initial_value: 'false'
     restore_value: yes
+  
+  - id: reset_counter
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: volt_update_interval
+    type: int
+    restore_value: yes
+    initial_value: '0'
 
 binary_sensor:
   - platform: template
@@ -167,6 +184,23 @@ number:
               }
             }
 
+  - platform: template
+    name: "Voltage measurement update rate (0 is off)"
+    id: volt_update_interval_number
+    device_class: "duration"
+    unit_of_measurement: "s"
+    entity_category: "diagnostic"
+    update_interval: never
+    initial_value: 0
+    min_value: 0
+    max_value: 300
+    step: 1
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            id(volt_update_interval) = x;
+
   # # For debugging mat signal gradient
   # - platform: template
   #   name: "Speed of pressure requirement"
@@ -187,19 +221,33 @@ number:
   #           id: mat_sensitivity_select
   #           option: "Custom"
 
-# Un-comment this sensor to watch the sensor is real-time
-# sensor:            
-#   - platform: template
-#     name: "Pressure Voltage"
-#     id: visible_pressure_voltage
-#     unit_of_measurement: "V"
-#     device_class: "voltage"
-#     state_class: "measurement"
-#     icon: "mdi:sine-wave"
-#     accuracy_decimals: 3
-#     update_interval: 1s
-#     lambda: |-
-#       return id(matDataSampledAvg);
+sensor:            
+  - platform: template
+    name: "Pressure Voltage"
+    id: visible_pressure_voltage
+    unit_of_measurement: "V"
+    device_class: "voltage"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: never
+    lambda: |-
+      return id(matDataSampledAvg);
+
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_db
+    update_interval: 60s
+
+  - platform: internal_temperature
+    name: "Internal Temperature"
+
+  - platform: template
+    name: "Reset Counter"
+    id: reset_counter_sensor
+    entity_category: "diagnostic"
+    accuracy_decimals: 0
 
   # # For debugging mat signal gradient  
   # - platform: template
@@ -246,6 +294,8 @@ interval:
         static int bufferIndex = 0;
         int voltSampleAvg = 100;
         float matDataAvg;
+        int volt_update_interval_ms = id(volt_update_interval) * 1000; // convert update rate to milliseconds
+        static unsigned long intervalTimer = 0;
 
         // calibration variables
         static float calibrationMatDataStart;
@@ -256,6 +306,11 @@ interval:
 
         // on first run through fill the matDataBuffer with the restored value if possible
         if (startUpFlag) {
+
+          id(reset_counter) += 1;
+          if(id(reset_counter) > 5) {id(reset_counter) = 0;}
+          id(reset_counter_sensor).publish_state(id(reset_counter));
+
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           for (int i = 0; i < sliderWindowSize; i++) {
             matDataBuffer[i] = id(matDataSampledAvg);
@@ -387,6 +442,13 @@ interval:
           calibrationChange = 0;
           prevCalibrationChange = 0;
           gradCalibrationMin = 0;
+        }
+
+        if ( id(volt_update_interval) > 0) {
+          if (currentTime - intervalTimer >= volt_update_interval_ms) {
+            id(visible_pressure_voltage).publish_state(matDataAvg);
+            intervalTimer = currentTime;
+          }
         }
 
         //id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient

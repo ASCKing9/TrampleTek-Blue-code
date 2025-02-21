@@ -1,6 +1,6 @@
 {
   "name": "TrampleTek Blue Firmware",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
@@ -8,7 +8,9 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/ttb-mat.ota.bin",
-        "md5": "cda12af58c9fda8c8c7d53bdca29ecac"        
+        "md5": "86e89bab9c03b17a1c69f40cb2dc0db8",
+        "summary": "Added several diagnostic entities, internal CPU temperature, Wifi Strength, a reset counter, sensor voltage, and a slider to enable sensor voltage reading at different rates. If you have 'taken control' of your TTB mat in ESPHome and you use this OTA update, you will need to give your mat WiFi credentials again through improv bluetooth, USB connection through https://web.esphome.io/, or connecting to it's fall back hotspot 'TTBlue Fallback Hotspot'.",
+        "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTekBlue_change_log.txt"                
       },
       "parts": [
         {
