@@ -1,53 +1,13 @@
-# esp32:
-#   board: esp32-c3-devkitm-1
-#   framework:
-#     type: arduino
 
-# # Enable logging
-# logger:
-
-# # Enable Home Assistant API
-# api:
-#   encryption:
-#     key: "[The encryption key that you set up, if you installed it]"
-
-#   # Enable fallback hotspot (captive portal) in case wifi connection fails
-#   ap:
-#     ssid: "[your devices wifi]"
-#     password: "[your device password]"
-
-# captive_portal:
-
-### Above this line is are typical default ESPHome config.
-### You don't need to copy the code above, it is there as reference.
-
-ota:
-  - platform: esphome
-  - platform: http_request
-    id: ota_http_request
-  
-update:
-  - platform: http_request
-    id: update_http_request
-    name: Firmware
-    source: https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTekBlue.json
-    update_interval: 6h
-
-http_request:
-  verify_ssl: false
-
-wifi:
-  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
+#### Step 1. esphome - you shouldn't need to change the name, but you will need to add everything from 'project' and below
 esphome:
-  name: [Your internal devices name]
-  friendly_name: [The name you gave the device]
+  name: [your device name]
+  friendly_name: [your friendly device name]
   project:
     name: AppliedSensorCo.TrampleTek_Blue
-    version: 0.1.1
-  on_boot: #!!!!!!!!!!! YOU WILL NEED TO ADD THIS on_boot SECTION TO THE CODE!!!!!!!
+    version: 0.1.2
+
+  on_boot: # ESPHome’s internal restoring of variables to be flaky, this will help your mat keep your calibration settings after an unexpected on/off event. 
       priority: -10
       then:
         - delay: 3s  # Add a delay to ensure components are fully initialized
@@ -60,34 +20,106 @@ esphome:
               call.perform();
             }
 
-### Above this line is are some CHANGES you need to make to esphome: and wifi:
 
-### Below is the code that goes at the bottom of your fresh ESPHome install, paste the code below this line.
+#### Step 2. esp32 - nothing to change or add here
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+#### Step 3. logger - nothing to change here
+logger:
+
+#### Step 4. api - need to make sure your encryption number is here! I like to have the 180s reboot_timeout just in case something goes wrong and the devices needs to restart, default is 15mins which is just too long!
+api:
+  encryption:
+    key: "[!!! You will need to make sure you keep your encrpyton key from your file]"
+  reboot_timeout: 180s
+
+#### Step 5. ota - the password isn't necessary, but does add security. You can keep or remove it. Adding the http_request will enable you to see and get new version updates
+ota:
+  - platform: esphome
+    # password: "[your ota password here]"
+  - platform: http_request
+    id: ota_http_request
+
+#### Step 6. wifi - Added the lines about out_power and reboot_time. I usually erase the password backup hotspot because if you need it you'll probaly not remember it!
+wifi:
+  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  reboot_timeout: 60s
+  ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  ap:
+    ssid: "TTBlue Fallback Hotspot"
+
+#### Step 7. update - you'll need to add this section if you want to see update prompts in the future  
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware
+    source: https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTekBlue.json
+    update_interval: 6h
+
+#### Step 8. http_request - add this section as you'll need it to get updates in the futures
+http_request:
+  verify_ssl: false
+
+#### Step 9. Enables wifi credentials over USB, if you need it
+improv_serial:
+
+#### Step 10. Enables wifi credentials over Bluetooth, if you need it
+esp32_improv:
+  authorizer: none
+
+#### Step 11. Enables you to "visit" the device and see stats
+web_server:
+
+#### Step 12. Enables the website at http://192.168.4.1/ if you need to connect to the fall back hotspot
+captive_portal:
+
+
+#### Step  13
+### Below is the code that goes at the bottom of your YAML file, paste ALL code below this line to your YAML file.
 
 globals:
   - id: step_event_threshold
     type: float
     restore_value: yes
     initial_value: '0.04'
+
   - id: matGradientReq
     type: float
     restore_value: yes
     initial_value: '0.12'
+
   - id: matDataSampledAvg
     type: float
     restore_value: yes
     initial_value: '1.8'
+
   - id: selectFlag
     type: bool
     initial_value: 'false'
+
   - id: dropdownSelectIndex
     type: int
     restore_value: yes
     initial_value: '4'
+
   - id: sensorBoolValue
     type: bool
     initial_value: 'false'
     restore_value: yes
+  
+  - id: reset_counter
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: volt_update_interval
+    type: int
+    restore_value: yes
+    initial_value: '0'
 
 binary_sensor:
   - platform: template
@@ -163,6 +195,23 @@ number:
               }
             }
 
+  - platform: template
+    name: "Voltage measurement update rate (0 is off)"
+    id: volt_update_interval_number
+    device_class: "duration"
+    unit_of_measurement: "s"
+    entity_category: "diagnostic"
+    update_interval: never
+    initial_value: 0
+    min_value: 0
+    max_value: 300
+    step: 1
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            id(volt_update_interval) = x;
+
   # # For debugging mat signal gradient
   # - platform: template
   #   name: "Speed of pressure requirement"
@@ -183,19 +232,33 @@ number:
   #           id: mat_sensitivity_select
   #           option: "Custom"
 
-# Un-comment this sensor to watch the sensor is real-time
-# sensor:            
-#   - platform: template
-#     name: "Pressure Voltage"
-#     id: visible_pressure_voltage
-#     unit_of_measurement: "V"
-#     device_class: "voltage"
-#     state_class: "measurement"
-#     icon: "mdi:sine-wave"
-#     accuracy_decimals: 3
-#     update_interval: 1s
-#     lambda: |-
-#       return id(matDataSampledAvg);
+sensor:            
+  - platform: template
+    name: "Pressure Voltage"
+    id: visible_pressure_voltage
+    unit_of_measurement: "V"
+    device_class: "voltage"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    icon: "mdi:sine-wave"
+    accuracy_decimals: 3
+    update_interval: never
+    lambda: |-
+      return id(matDataSampledAvg);
+
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_db
+    update_interval: 60s
+
+  - platform: internal_temperature
+    name: "Internal Temperature"
+
+  - platform: template
+    name: "Reset Counter"
+    id: reset_counter_sensor
+    entity_category: "diagnostic"
+    accuracy_decimals: 0
 
   # # For debugging mat signal gradient  
   # - platform: template
@@ -242,6 +305,8 @@ interval:
         static int bufferIndex = 0;
         int voltSampleAvg = 100;
         float matDataAvg;
+        int volt_update_interval_ms = id(volt_update_interval) * 1000; // convert update rate to milliseconds
+        static unsigned long intervalTimer = 0;
 
         // calibration variables
         static float calibrationMatDataStart;
@@ -252,6 +317,11 @@ interval:
 
         // on first run through fill the matDataBuffer with the restored value if possible
         if (startUpFlag) {
+
+          id(reset_counter) += 1;
+          if(id(reset_counter) > 5) {id(reset_counter) = 0;}
+          id(reset_counter_sensor).publish_state(id(reset_counter));
+
           id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
           for (int i = 0; i < sliderWindowSize; i++) {
             matDataBuffer[i] = id(matDataSampledAvg);
@@ -280,7 +350,7 @@ interval:
           matGradient = 0;
         } else {
           matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval
-        }               
+        }                      
 
         if (matDownThresholdLock == true && justFlippedOff == true) {
           matDownThresholdLock = false;
@@ -355,8 +425,7 @@ interval:
           justFlippedOff = true;
           id(sensorBoolValue) = false;
           id(Mat_binary_trigger).publish_state(false);
-        }
-        
+        }        
 
         if (id(calibration_button).state == true) {
           if (calibrationFirstLoop == true) {
@@ -384,6 +453,13 @@ interval:
           calibrationChange = 0;
           prevCalibrationChange = 0;
           gradCalibrationMin = 0;
+        }
+
+        if ( id(volt_update_interval) > 0) {
+          if (currentTime - intervalTimer >= volt_update_interval_ms) {
+            id(visible_pressure_voltage).publish_state(matDataAvg);
+            intervalTimer = currentTime;
+          }
         }
 
         //id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
