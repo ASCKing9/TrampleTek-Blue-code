@@ -1,20 +1,20 @@
 {
   "name": "TrampleTek Sleep Firmware",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.ota.bin",
-        "md5": "bcf7fd37f8255cba2df0663d27f9c223",
-        "summary": "0.1.3 is a hotfix for devices losing wifi credentials after OTA. If you updated to 0.1.2 you will likely need to reinstall 0.1.3 using the USB cable (but after that OTA will work again, probably, I promise :) )",
+        "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.ota.bin",
+        "md5": "23ff403db1dc1ab0bb6733b4d6e1d4c1",
+        "summary": "Name change to SlumberTek, binary sensor now called Bed Sensor (hopefully that doesn't break anything!), calibration UI and algorithm changes, calibrating button now clears the last 24hrs automatic threshold data",
         "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
       },
       "parts": [
         {
-          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/tt-sleep.factory.bin",
+          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.factory.bin",
           "offset": 0
         }
       ]

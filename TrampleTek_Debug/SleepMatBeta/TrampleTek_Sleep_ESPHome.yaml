@@ -1,6 +1,6 @@
 substitutions:
   name: tt-sleep
-  friendly_name: TTSleep
+  friendly_name: TT Sleep
 
 esphome:
   name: ${name}

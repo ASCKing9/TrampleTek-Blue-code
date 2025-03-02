@@ -1,14 +1,14 @@
 substitutions:
-  name: tt-sleep
-  friendly_name: TTSleep
+  name: slumbertek
+  friendly_name: SlumberTek
 
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: true
   project:
-    name: AppliedSensorCo.TrampleTek-Sleep
-    version: 0.1.0
+    name: AppliedSensorCo.SlumberTek-Sleep
+    version: 0.1.4
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -19,6 +19,7 @@ esp32:
 logger:
 
 api:
+  reboot_timeout: 180s
 
 ota:
   - platform: esphome
@@ -38,8 +39,11 @@ http_request:
 
 wifi:
   output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  reboot_timeout: 60s
+  ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
   ap:
-    ssid: TrampleTek Blue Fallback Hotspot
+    ssid: "SlumberTek Fallback Hotspot"
 
 dashboard_import:
   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep_ESPHome.yaml@main
@@ -55,7 +59,7 @@ web_server:
 captive_portal:
 
 globals:
-  - id: event_threshold
+  - id: sensitivity_threshold
     type: int
     restore_value: yes
     initial_value: '3'
@@ -83,43 +87,59 @@ globals:
   - id: lower_limit_g
     type: float
     restore_value: yes
-    initial_value: '1.5'
+    initial_value: '1.8'
     
   - id: upper_limit_g
     type: float
     restore_value: yes
-    initial_value: '2.5'
+    initial_value: '1.9'
 
   - id: sample_index
     type: int
-    restore_value: no
+    restore_value: yes
     initial_value: '0'
+
+  - id: array_full
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+  - id: daily_samples
+    type: float[48]  # Define an array of 48 float variables
+    restore_value: yes
+    initial_value: '{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}'  # Initialize all elements to 0
 
   - id: on_validation
     type: int
     restore_value: yes
-    initial_value: '5'
+    initial_value: '3'
 
   - id: off_validation
     type: int
     restore_value: yes
     initial_value: '10'
 
-  - id: dynamic_threshold_reduction
+  - id: threshold_convergence_factor
     type: int
     restore_value: yes
-    initial_value: '6'
+    initial_value: '7'
+
+  - id: reset_counter
+    type: int
+    restore_value: yes
+    initial_value: '0'
 
 binary_sensor:
   - platform: template
-    name: "Mat Sensor"
-    id: Mat_binary_trigger
+    name: "Bed Sensor"
+    id: Bed_binary_trigger
 
 number:
   - platform: template
-    name: "Sensitivity (Higher is more sensitive to motion)"
+    name: "Detection Sensitivity (Higher is more sensitive)"
     id: sensitivity_number
     device_class: "voltage"
+    entity_category: "diagnostic"
     update_interval: never
     initial_value: 3
     min_value: 1
@@ -130,7 +150,7 @@ number:
     on_value:
       then:
         - lambda: |-
-            id(event_threshold) = x;
+            id(sensitivity_threshold) = x;
   
   - platform: template
     name: "Empty Bed value"
@@ -201,8 +221,8 @@ number:
             id(off_validation) = x;
 
   - platform: template
-    name: "24hr Dynamic Threshold reduction factor"
-    id: dynamic_threshold_reduction_number
+    name: "Threshold Convergence Factor"
+    id: threshold_convergence_factor_number
     update_interval: never
     initial_value: 6
     min_value: 1
@@ -213,7 +233,21 @@ number:
     on_value:
       then:
         - lambda: |-
-            id(dynamic_threshold_reduction) = x;
+            // Calculate midpoint and adjust thresholds closer or farther away
+            float midpoint = id(lower_limit_g) + 0.25 * (id(upper_limit_g) - id(lower_limit_g)); // moved from 50% between to 25% towards lower  ver 0.1.4
+            // Back calculate the max upper and lower threshold, there will be rounding error here
+            float originalLowerThreshold = (midpoint - (midpoint - id(lower_limit_g)) / (1 - id(threshold_convergence_factor) * 0.1));
+            float originalUpperThreshold = ((id(upper_limit_g) - midpoint) / (1 - id(threshold_convergence_factor) * 0.1) + midpoint);
+            // Adjust threshold around midpoint based on new input to slider 'x'
+            float newLowerThreshold = originalLowerThreshold + (x * 0.1) * (midpoint - originalLowerThreshold);
+            float newUpperThreshold = originalUpperThreshold - (x * 0.1) * (originalUpperThreshold - midpoint);
+
+            /// truncate values to 3 decimals and update thresholds
+            id(lower_limit_voltage).publish_state(((int)(newLowerThreshold * 1000)) / 1000.0);
+            id(upper_limit_voltage).publish_state(((int)(newUpperThreshold * 1000)) / 1000.0);
+            
+            id(threshold_convergence_factor) = x;
+            
 
 # Un-comment this sensor to watch the sensor is real-time
 sensor:            
@@ -253,6 +287,19 @@ sensor:
     lambda: |-
       return id(matUpThresholdID);
 
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_db
+    update_interval: 60s
+
+  - platform: internal_temperature
+    name: "Internal Temperature"
+
+  - platform: template
+    name: "Reset Counter"
+    id: reset_counter_sensor
+    accuracy_decimals: 0
+
 switch:
   - platform: template
     name: "Calibration (turn on, lay on bed for at least 30s, get out of bed, turn off)"
@@ -289,7 +336,7 @@ interval:
 
         // Long-term event tracking
         static unsigned long lastEventTime = 0;                             // Time of the last detected event
-        static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds
+        //static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds, testing removal for 0.1.4
 
         // Off transition validation
         static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
@@ -316,12 +363,8 @@ interval:
         float dynamicLowerThreshold;   // Lower dynamic threshold
 
         // Threshold offset variables
-        float dynamicThresholdOffset = id(event_threshold) * sensitivityBase; // Offset for dynamic thresholds relative to the threshold signal
+        float dynamicThresholdOffset = id(sensitivity_threshold) * sensitivityBase; // Offset for dynamic thresholds relative to the threshold signal
         float longTermThresholdOffset = dynamicThresholdOffset / 2; // Offset for lower threshold after long-term stability
-
-        // Sensor states
-        static bool previousIsOnState = id(sensorBoolValue);  // Initialize previous state flag
-        bool isOn = id(sensorBoolValue);                      // State flag ("on" or "off")
 
         // Analog pin reading on Lolin C3-Mini board
         int analogPin = 0;
@@ -335,9 +378,13 @@ interval:
           lowPassPrevOutput = initialVoltage;
           thresholdPrevInput = initialVoltage;
           thresholdPrevOutput = initialVoltage;
-          
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          id(sensitivity_number).publish_state(id(event_threshold));
+
+          id(reset_counter) += 1;
+          if(id(reset_counter) > 5) {id(reset_counter) = 0;}
+          id(reset_counter_sensor).publish_state(id(reset_counter));
+                    
+          id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+          id(sensitivity_number).publish_state(id(sensitivity_threshold));
           id(lower_limit_voltage).publish_state(id(lower_limit_g));
           id(upper_limit_voltage).publish_state(id(upper_limit_g));
         }
@@ -364,16 +411,18 @@ interval:
         dynamicUpperThreshold = fixedUpperLimit; // testing the removal of "= constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);"
         
         // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
-        if (millis() - lastEventTime > noEventThreshold) {
+        //if (millis() - lastEventTime > noEventThreshold) {
           // Lower the "on" threshold sensitivity after 10 minutes of no events
-          dynamicLowerThreshold = constrain(thresholdSignal - longTermThresholdOffset, fixedLowerLimit, fixedUpperLimit);
-        } else {
-          dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
-        }
+        //  dynamicLowerThreshold = constrain(thresholdSignal - longTermThresholdOffset, fixedLowerLimit, fixedUpperLimit); // removing testing for 0.1.4
+        //} else {
+        dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        //}
 
         // Step 6: Check for calibration and Handle "on" and "off" states
         if (id(calibration_button).state) {
           id(sample_index) = 0;  // Reset sampleIndex when calibration starts
+          id(array_full) = false; // Sets the auto calibration to wait for 24hrs of data collection ver0.1.4
+
           // Calibration mode: Track max and min values
           if (lowPassOutput > calibrationMax) {
             calibrationMax = lowPassOutput;
@@ -386,7 +435,7 @@ interval:
             id(lower_limit_voltage).publish_state(truncatedCaliValue);
           }
         } else {
-          if (isOn) {
+          if (id(Bed_binary_trigger).state) {
             // Immediate "off" if low-pass signal exceeds the dynamic upper threshold
             if (lowPassOutput > dynamicUpperThreshold) {
               if (!validatingOffTransition) {
@@ -395,7 +444,8 @@ interval:
                 validatingOffTransition = true;
               } else if (millis() - offValidationStartTime >= offValidationDuration) {
                 // Timer expired: Turn "off"
-                isOn = false;
+                id(sensorBoolValue) = false;
+                id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
                 offValidationStartTime = 0;
                 validatingOffTransition = false;
                 lastEventTime = millis();
@@ -414,7 +464,8 @@ interval:
                 validatingOnTransition = true;
               } else if (millis() - onValidationStartTime >= onValidationDuration) {
                 // Timer expired: Turn "on"
-                isOn = true;
+                id(sensorBoolValue) = true;
+                id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
                 onValidationStartTime = 0;
                 validatingOnTransition = false;
                 lastEventTime = millis();
@@ -427,13 +478,7 @@ interval:
           }
         }
         
-        // Step 7: Publish new binary state if needed
-        if (previousIsOnState != isOn) {
-          id(sensorBoolValue) = isOn;
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-        }
-
-        // Step 8: Finalize Calibration if button is turned off
+        // Step 7: Finalize Calibration if button is turned off
         if (!id(calibration_button).state && wasCalibrating) {
           float signalDifference = calibrationMax - calibrationMin;
 
@@ -441,14 +486,20 @@ interval:
           sensitivityBase = signalDifference / 20.0; // 20 steps, 
           id(sensitivity_number).publish_state(3);
 
-          // Adjust the limits by a percentage of the signalDifference, based on a typical 30s calibration time and personal heuristics
-          calibrationMin  = calibrationMin - (signalDifference * 0.1); // shift lower limit down by 10% of signalDifference
-          float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(lower_limit_voltage).publish_state(truncatedCaliValue);
+          float newLowerThreshold = calibrationMin;
+          float newUpperThreshold = calibrationMax;
 
-          calibrationMax  = calibrationMax - (signalDifference * 0.4); // shift upper limit down by 40% of signalDifference
-          truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(upper_limit_voltage).publish_state(truncatedCaliValue);
+          // Calculate midpoint and adjust thresholds closer together
+          float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
+          newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+          newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
+
+          float truncatedLowerThreshold = ((int)(newLowerThreshold * 1000)) / 1000.0;
+          id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
+
+          float truncatedUpperThreshold = ((int)(newUpperThreshold * 1000)) / 1000.0;
+          id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
+
 
           calibrationMax = 0.0;  // Reset for future calibration
           calibrationMin = 3.3;
@@ -457,41 +508,39 @@ interval:
           wasCalibrating = true;
         }
 
-        // Step 9: Update persistent variables
+        // Step 8: Update persistent variables
         id(filteredMatSignal) = lowPassOutput;
         id(matDownThresholdID) = dynamicLowerThreshold;
         id(matUpThresholdID) = dynamicUpperThreshold;
-        previousIsOnState = id(sensorBoolValue);
         startUpFlag = false;
 
   - interval: 30min
     then:
       lambda: |-
-        static float dailySamples[48];  // Buffer to store 24 hours of data (48 samples at 30-minute intervals)
-        static bool arrayFull = false; // Flag to indicate when the array is full
+        // Use global variable for daily_samples
         int sampleIndex = id(sample_index);  // Access global sampleIndex
 
         // Debugging: Indicate entering the interval loop
-        ESP_LOGD("interval_30min", "Processing 30min interval loop");
+        //ESP_LOGD("interval_30min", "Processing 30min interval loop");
 
-        // Step 1: Collect the current lowPassOutput and store it in the buffer
-        dailySamples[sampleIndex] = id(filteredMatSignal);
-        ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
+        // Step 1: Collect the current lowPassOutput and store it in the global buffer
+        id(daily_samples)[sampleIndex] = id(filteredMatSignal);
+        //ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
 
         sampleIndex++;
         if (sampleIndex >= 48) {
           id(sample_index) = 0;
-          arrayFull = true;
-          ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
+          id(array_full) = true;
+          //ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
         } else {
           id(sample_index) = sampleIndex; // Update the global sample index
         }
 
-        // Step 2: Process the buffer once it's full
-        if (arrayFull) {
+        // Step 2: Re-evaluate thresholds every 8 hours (16 samples)
+        if (sampleIndex % 16 == 0 && id(array_full)) {
           // Sort the array in ascending order
-          std::sort(dailySamples, dailySamples + 48);
-          ESP_LOGD("interval_30min", "Sorted dailySamples array");
+          std::sort(id(daily_samples), id(daily_samples) + 48);
+          //ESP_LOGD("interval_30min", "Sorted daily_samples array");
 
           // Step 3: Determine if the split index falls in the critical range
           int splitIndex = 0;
@@ -499,13 +548,13 @@ interval:
 
           // Identify the largest gap in the sorted array
           for (int i = 0; i < 47; i++) {
-            float gap = dailySamples[i + 1] - dailySamples[i];
+            float gap = id(daily_samples)[i + 1] - id(daily_samples)[i];
             if (gap > largestGap) {
               largestGap = gap;
               splitIndex = i;
             }
           }
-          ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
+          //ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
 
           // Step 4: Remove extreme values if the split index is in the critical range
           bool criticalRange = (splitIndex <= 3 || splitIndex >= 44);
@@ -514,9 +563,9 @@ interval:
 
           if (criticalRange) {
             for (int i = 4; i < 44; i++) {  // Remove top and bottom 4 values
-              filteredSamples[filteredCount++] = dailySamples[i];
+              filteredSamples[filteredCount++] = id(daily_samples)[i];
             }
-            ESP_LOGD("interval_30min", "Filtered extreme values due to critical range");
+            //ESP_LOGD("interval_30min", "Filtered extreme values due to critical range");
 
             // Recalculate the largest gap with the reduced array
             splitIndex = 0;
@@ -528,21 +577,19 @@ interval:
                 splitIndex = i;
               }
             }
-            ESP_LOGD("interval_30min", "Recalculated largest gap: %.3f at index %d", largestGap, splitIndex);
+            //ESP_LOGD("interval_30min", "Recalculated largest gap: %.3f at index %d", largestGap, splitIndex);
 
           } else {
             for (int i = 0; i < 48; i++) {  // Keep all values if not in critical range
-              filteredSamples[filteredCount++] = dailySamples[i];
+              filteredSamples[filteredCount++] = id(daily_samples)[i];
             }
-            ESP_LOGD("interval_30min", "Retained all values as split index not in critical range");
+            //ESP_LOGD("interval_30min", "Retained all values as split index not in critical range");
           }
 
           // Check if the largest gap meets the minimum gap requirement
-          float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.5;
+          float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.6; // increased back to 60% in 0.1.4
           if (largestGap < minGap) {
-            ESP_LOGD("interval_30min", "Recalculated largest gap %.3f is smaller than minGap %.3f, thresholds will not be updated", largestGap, minGap);
-            ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
-            arrayFull = false;  // Reset array for the next cycle
+            //ESP_LOGD("interval_30min", "Largest gap %.3f is below minGap %.3f. Skipping threshold update.", largestGap, minGap);
             return;  // No significant gap; likely no bed presence data
           }
 
@@ -558,33 +605,28 @@ interval:
           for (int i = splitIndex + 1; i < filteredCount; i++) {
             upperHalf[upperCount++] = filteredSamples[i];
           }
-          ESP_LOGD("interval_30min", "Split data into lower (%d) and upper (%d) halves", lowerCount, upperCount);
 
           // Step 6: Calculate percentiles for thresholds
-          int lower80thIndex = (int)(lowerCount * 0.8) - 1;
-          if (lower80thIndex < 0) lower80thIndex = 0;
+          int lower30thIndex = (int)(lowerCount * 0.3) - 1; // moved from 80% to 30% ver0.1.4
+          if (lower30thIndex < 0) lower30thIndex = 0;
           int upper20thIndex = (int)(upperCount * 0.2);
 
-          float newLowerThreshold = lowerHalf[lower80thIndex];
+          float newLowerThreshold = lowerHalf[lower30thIndex];
           float newUpperThreshold = upperHalf[upper20thIndex];
 
           // Calculate midpoint and adjust thresholds closer together
-          float midpoint = (newLowerThreshold + newUpperThreshold) / 2.0;
-          newLowerThreshold = newLowerThreshold + (id(dynamic_threshold_reduction) * 0.1) * (midpoint - newLowerThreshold);
-          newUpperThreshold = newUpperThreshold - (id(dynamic_threshold_reduction) * 0.1) * (newUpperThreshold - midpoint);
+          float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
+          newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+          newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
 
           float alpha = 0.85;  // Weight for the new value
           float updatedLowerThreshold = alpha * newLowerThreshold + (1 - alpha) * id(lower_limit_g);
-          float truncatedLowerThreshold = ((int)(updatedLowerThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          float truncatedLowerThreshold = ((int)(updatedLowerThreshold * 1000)) / 1000.0;
           id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
 
           float updatedUpperThreshold = alpha * newUpperThreshold + (1 - alpha) * id(upper_limit_g);
-          float truncatedUpperThreshold = ((int)(updatedUpperThreshold * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          float truncatedUpperThreshold = ((int)(updatedUpperThreshold * 1000)) / 1000.0;
           id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
-          
-          ESP_LOGD("interval_30min", "Updated thresholds - Lower: %.3f, Upper: %.3f", id(lower_limit_g), id(upper_limit_g));
 
-          // Reset the sample array for the next 24 hours
-          arrayFull = false;
-          ESP_LOGD("interval_30min", "Reset sample buffer for next 24-hour cycle");
+          //ESP_LOGD("interval_30min", "Updated thresholds: Lower = %.3f, Upper = %.3f", truncatedLowerThreshold, truncatedUpperThreshold);
         }

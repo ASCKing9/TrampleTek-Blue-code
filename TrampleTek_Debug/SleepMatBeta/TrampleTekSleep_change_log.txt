@@ -1,8 +1,17 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
+Ver 0.1.5 (notes, in progress)
+ - Sensitivity still necessary UI element?
+
 Ver 0.1.4 (notes, in progress, not out)
  - Added a little more detail to calibration button
- - Might be time to remove the 10 min sensitivity increase, don't think it's necessary anymore
+ - Shifted the calibration routine to be lower over all
+ - Calibrating clears the last 24hrs automatic threshold data
+ - Removed an 10 minute sensitivity increase if no event was detected on the sensor.
+ - Shifted threshold mid-point lower shift threshold mid-point value to 25% lower bottom of max difference gap, increase default Convergence factor to 7
+ - changed name to match new name product name: SlumberTek
+ - Change binary sensor name to "Bed Sensor" from "Mat Sensor"
+ 
 
 Ver 0.1.3 (hotfix - 2-17-25)
  - When I added the "ssid: !secret wifi_ssid" and "password: !secret wifi_password" into the tt-sleep.factory.bin and tt-sleep.ota.bin it reset all the wifi credentials and without the credentials the device couldn't connect to ESPHome to get the Secret's information.
