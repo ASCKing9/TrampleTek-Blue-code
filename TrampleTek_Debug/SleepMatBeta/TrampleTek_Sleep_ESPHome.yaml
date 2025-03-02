@@ -1,14 +1,14 @@
 substitutions:
-  name: tt-sleep
-  friendly_name: TT Sleep
+  name: slumbertek
+  friendly_name: SlumberTek
 
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: true
   project:
-    name: AppliedSensorCo.TrampleTek-Sleep
-    version: 0.1.3
+    name: AppliedSensorCo.SlumberTek-Sleep
+    version: 0.1.4
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -43,7 +43,7 @@ wifi:
   ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
   password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
   ap:
-    ssid: "TTSleep Fallback Hotspot"
+    ssid: "SlumberTek Fallback Hotspot"
 
 dashboard_import:
   package_import_url: github://ASCKing9/TrampleTek-Blue-code/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep_ESPHome.yaml@main
@@ -122,7 +122,7 @@ globals:
   - id: threshold_convergence_factor
     type: int
     restore_value: yes
-    initial_value: '6'
+    initial_value: '7'
 
   - id: reset_counter
     type: int
@@ -131,8 +131,8 @@ globals:
 
 binary_sensor:
   - platform: template
-    name: "Mat Sensor"
-    id: Mat_binary_trigger
+    name: "Bed Sensor"
+    id: Bed_binary_trigger
 
 number:
   - platform: template
@@ -234,7 +234,7 @@ number:
       then:
         - lambda: |-
             // Calculate midpoint and adjust thresholds closer or farther away
-            float midpoint = (id(lower_limit_g) + id(upper_limit_g)) / 2.0;
+            float midpoint = id(lower_limit_g) + 0.25 * (id(upper_limit_g) - id(lower_limit_g)); // moved from 50% between to 25% towards lower  ver 0.1.4
             // Back calculate the max upper and lower threshold, there will be rounding error here
             float originalLowerThreshold = (midpoint - (midpoint - id(lower_limit_g)) / (1 - id(threshold_convergence_factor) * 0.1));
             float originalUpperThreshold = ((id(upper_limit_g) - midpoint) / (1 - id(threshold_convergence_factor) * 0.1) + midpoint);
@@ -336,7 +336,7 @@ interval:
 
         // Long-term event tracking
         static unsigned long lastEventTime = 0;                             // Time of the last detected event
-        static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds
+        //static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds, testing removal for 0.1.4
 
         // Off transition validation
         static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
@@ -383,7 +383,7 @@ interval:
           if(id(reset_counter) > 5) {id(reset_counter) = 0;}
           id(reset_counter_sensor).publish_state(id(reset_counter));
                     
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+          id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
           id(sensitivity_number).publish_state(id(sensitivity_threshold));
           id(lower_limit_voltage).publish_state(id(lower_limit_g));
           id(upper_limit_voltage).publish_state(id(upper_limit_g));
@@ -411,16 +411,18 @@ interval:
         dynamicUpperThreshold = fixedUpperLimit; // testing the removal of "= constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);"
         
         // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
-        if (millis() - lastEventTime > noEventThreshold) {
+        //if (millis() - lastEventTime > noEventThreshold) {
           // Lower the "on" threshold sensitivity after 10 minutes of no events
-          dynamicLowerThreshold = constrain(thresholdSignal - longTermThresholdOffset, fixedLowerLimit, fixedUpperLimit);
-        } else {
-          dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
-        }
+        //  dynamicLowerThreshold = constrain(thresholdSignal - longTermThresholdOffset, fixedLowerLimit, fixedUpperLimit); // removing testing for 0.1.4
+        //} else {
+        dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+        //}
 
         // Step 6: Check for calibration and Handle "on" and "off" states
         if (id(calibration_button).state) {
           id(sample_index) = 0;  // Reset sampleIndex when calibration starts
+          id(array_full) = false; // Sets the auto calibration to wait for 24hrs of data collection ver0.1.4
+
           // Calibration mode: Track max and min values
           if (lowPassOutput > calibrationMax) {
             calibrationMax = lowPassOutput;
@@ -433,7 +435,7 @@ interval:
             id(lower_limit_voltage).publish_state(truncatedCaliValue);
           }
         } else {
-          if (id(Mat_binary_trigger).state) {
+          if (id(Bed_binary_trigger).state) {
             // Immediate "off" if low-pass signal exceeds the dynamic upper threshold
             if (lowPassOutput > dynamicUpperThreshold) {
               if (!validatingOffTransition) {
@@ -443,7 +445,7 @@ interval:
               } else if (millis() - offValidationStartTime >= offValidationDuration) {
                 // Timer expired: Turn "off"
                 id(sensorBoolValue) = false;
-                id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+                id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
                 offValidationStartTime = 0;
                 validatingOffTransition = false;
                 lastEventTime = millis();
@@ -463,7 +465,7 @@ interval:
               } else if (millis() - onValidationStartTime >= onValidationDuration) {
                 // Timer expired: Turn "on"
                 id(sensorBoolValue) = true;
-                id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+                id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
                 onValidationStartTime = 0;
                 validatingOnTransition = false;
                 lastEventTime = millis();
@@ -484,14 +486,20 @@ interval:
           sensitivityBase = signalDifference / 20.0; // 20 steps, 
           id(sensitivity_number).publish_state(3);
 
-          // Adjust the limits by a percentage of the signalDifference, based on a typical 30s calibration time and personal heuristics
-          calibrationMin  = calibrationMin + (signalDifference * 0.2); // shift lower limit up by 20% of signalDifference, ver 0.1.2 change from subract *0.1 to add *0.2
-          float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(lower_limit_voltage).publish_state(truncatedCaliValue);
+          float newLowerThreshold = calibrationMin;
+          float newUpperThreshold = calibrationMax;
 
-          calibrationMax  = calibrationMax - (signalDifference * 0.4); // shift upper limit down by 40% of signalDifference
-          truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(upper_limit_voltage).publish_state(truncatedCaliValue);
+          // Calculate midpoint and adjust thresholds closer together
+          float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
+          newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+          newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
+
+          float truncatedLowerThreshold = ((int)(newLowerThreshold * 1000)) / 1000.0;
+          id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
+
+          float truncatedUpperThreshold = ((int)(newUpperThreshold * 1000)) / 1000.0;
+          id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
+
 
           calibrationMax = 0.0;  // Reset for future calibration
           calibrationMin = 3.3;
@@ -579,7 +587,7 @@ interval:
           }
 
           // Check if the largest gap meets the minimum gap requirement
-          float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.25;
+          float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.6; // increased back to 60% in 0.1.4
           if (largestGap < minGap) {
             //ESP_LOGD("interval_30min", "Largest gap %.3f is below minGap %.3f. Skipping threshold update.", largestGap, minGap);
             return;  // No significant gap; likely no bed presence data
@@ -599,15 +607,15 @@ interval:
           }
 
           // Step 6: Calculate percentiles for thresholds
-          int lower80thIndex = (int)(lowerCount * 0.8) - 1;
-          if (lower80thIndex < 0) lower80thIndex = 0;
+          int lower30thIndex = (int)(lowerCount * 0.3) - 1; // moved from 80% to 30% ver0.1.4
+          if (lower30thIndex < 0) lower30thIndex = 0;
           int upper20thIndex = (int)(upperCount * 0.2);
 
-          float newLowerThreshold = lowerHalf[lower80thIndex];
+          float newLowerThreshold = lowerHalf[lower30thIndex];
           float newUpperThreshold = upperHalf[upper20thIndex];
 
           // Calculate midpoint and adjust thresholds closer together
-          float midpoint = (newLowerThreshold + newUpperThreshold) / 2.0;
+          float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
           newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
           newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
 
