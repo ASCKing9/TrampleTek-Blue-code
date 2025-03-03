@@ -2,8 +2,9 @@ Go to the ASC Discord channel if you have any questions about the changes - http
 
 Ver 0.1.5 (notes, in progress)
  - Sensitivity still necessary UI element?
+ - Change project name to correct name "AppliedSensorCo.SlumberTek"
 
-Ver 0.1.4 (notes, in progress, not out)
+Ver 0.1.4 (3/1/25)
  - Added a little more detail to calibration button
  - Shifted the calibration routine to be lower over all
  - Calibrating clears the last 24hrs automatic threshold data

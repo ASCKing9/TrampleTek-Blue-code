@@ -9,7 +9,7 @@
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.ota.bin",
         "md5": "23ff403db1dc1ab0bb6733b4d6e1d4c1",
-        "summary": "Name change to SlumberTek, binary sensor now called Bed Sensor (hopefully that doesn't break anything!), calibration UI and algorithm changes, calibrating button now clears the last 24hrs automatic threshold data.",
+        "summary": "Name change to SlumberTek, binary sensor now called Bed Sensor (this will break existing automations), calibration UI and algorithm changes, calibrating button now clears the last 24hrs automatic threshold data.",
         "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
       },
       "parts": [
