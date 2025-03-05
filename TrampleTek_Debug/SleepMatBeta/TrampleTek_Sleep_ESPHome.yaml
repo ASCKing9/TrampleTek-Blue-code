@@ -7,7 +7,7 @@ esphome:
   friendly_name: ${friendly_name}
   name_add_mac_suffix: true
   project:
-    name: AppliedSensorCo.SlumberTek
+    name: AppliedSensorCo.SlumberTek-Sleep ##change to SlumberTek only in future
     version: 0.1.4
 
 esp32:
