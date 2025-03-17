@@ -1,8 +1,13 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
 Ver 0.1.5 (notes, in progress)
- - Sensitivity still necessary UI element?
  - Change project name to correct name "AppliedSensorCo.SlumberTek"
+ - Default "Threshold Convergence Factor" is now 7
+ - Removal of "web_server:" as it was causing increased disconnects for people
+ - Added slider for changing the rate of threshold updates
+ - Added new way to improve "out of bed" thresholds that are slow because of slats or very soft mattresses
+ - Changed some icons to better match what they do and made "Bed Sensor" an occupancy sensor
+ - Started shifting towards the AppliedSensorCo owned Github product repo instead of one under my personal github
 
 Ver 0.1.4 (3/1/25)
  - Added a little more detail to calibration button
