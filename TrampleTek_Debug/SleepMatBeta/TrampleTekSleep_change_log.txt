@@ -1,6 +1,6 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
-Ver 0.2.0 (notes, in progress)
+Ver 0.2.0 (release: 3/27/25)
  - MAJOR CHANGES:
       - MQTT logging is now active, YOU CAN TURN THIS OFF, but it is set to be ON by default
       - Switch from Arduino framework to ESP-IDF (lots of unexpected impacts of this)
