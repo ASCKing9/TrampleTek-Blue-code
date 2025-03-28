@@ -1,7 +1,9 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
  Ver 0.1.3 (In progress, not live)
- - changed friendly name to better match esphome name 
+ - changed friendly name to better match esphome name
+ - Increased "Sensitivity" max range to accommodate continued hardware changes
+ - Removal of "web_server:" as it was causing increased disconnects for people
 
  Ver 0.1.2 (Live 2-21-25)
  - Moved voltage measurement to diagnostic area, added slider for voltage measurement updating

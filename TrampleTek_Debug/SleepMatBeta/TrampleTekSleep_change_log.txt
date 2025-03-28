@@ -1,13 +1,19 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
-Ver 0.1.5 (notes, in progress)
+Ver 0.2.0 (notes, in progress)
+ - MAJOR CHANGES:
+      - MQTT logging is now active, YOU CAN TURN THIS OFF, but it is set to be ON by default
+      - Switch from Arduino framework to ESP-IDF (lots of unexpected impacts of this)
+      - Lots of element name changes
+      - Added mode: "Increased out of bed sensitivity mode" help to improve "out of bed" thresholds that are slow because of slats or very soft mattresses
  - Change project name to correct name "AppliedSensorCo.SlumberTek"
  - Default "Threshold Convergence Factor" is now 7
  - Removal of "web_server:" as it was causing increased disconnects for people
- - Added slider for changing the rate of threshold updates
- - Added new way to improve "out of bed" thresholds that are slow because of slats or very soft mattresses
+ - Added slider for changing the minimum rate of threshold updates, if values don't change it does not publish
+ - Increase reset counter to a maximum of 1000 restarts before going back to 0
  - Changed some icons to better match what they do and made "Bed Sensor" an occupancy sensor
- - Started shifting towards the AppliedSensorCo owned Github product repo instead of one under my personal github
+ - Started shifting towards the AppliedSensorCo owned Github product repo
+ - Moved lots of elements to the diagnostic section of the device
 
 Ver 0.1.4 (3/1/25)
  - Added a little more detail to calibration button

@@ -1,399 +1,692 @@
+substitutions:
+  name: slumbertek-0470f0
+  friendly_name: SlumberTek 0470f0
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  project:
+    name: AppliedSensorCo.SlumberTek
+    version: 0.1.4
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+api:
+  reboot_timeout: 180s
+
+ota:
+- platform: esphome
+- platform: http_request
+  id: ota_http_request
+
+update:
+- platform: http_request
+  id: update_http_request
+  name: Firmware
+  source: 
+    https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/refs/heads/main/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep.json
+  update_interval: 6h
+
+http_request:
+  verify_ssl: false
+
+
+wifi:
+  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's that are in the mat
+  reboot_timeout: 60s
+  ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  ap:
+    ssid: SlumberTek Fallback Hotspot
+
+dashboard_import:
+  package_import_url: 
+    github://ASCKing9/TrampleTek-Blue-code/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep_ESPHome.yaml@main
+  import_full_config: true
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
+
+# web_server: # Disabled in 0.1.5 because it was causing periodic disconnects for some people's HA and ESPHome setups
+
+captive_portal:
 
 globals:
-  - id: step_event_threshold
-    type: float
-    restore_value: yes
-    initial_value: '0.04'
-  - id: matGradientReq
-    type: float
-    restore_value: yes
-    initial_value: '0.04'
-  - id: matDataSampledAvg
-    type: float
-    restore_value: yes
-    initial_value: '1.8'
-  - id: selectFlag
-    type: bool
-    initial_value: 'false'
-  - id: dropdownSelectIndex
-    type: int
-    restore_value: yes
-    initial_value: '4'
-  - id: sensorBoolValue
-    type: bool
-    initial_value: 'false'
-    restore_value: yes
-    
-  # - id: matDownThresholdID
-  #   type: float
-  #   restore_value: yes
-  #   initial_value: '0.5'
-  # - id: matUpThresholdID
-  #   type: float
-  #   restore_value: yes
-  #   initial_value: '3.0'
+- id: sensitivity_threshold
+  type: int
+  restore_value: yes
+  initial_value: '6'
+
+- id: sensitivity_base
+  type: float
+  restore_value: yes
+  initial_value: '0.003'
+
+- id: volt_update_interval
+  type: int
+  restore_value: yes
+  initial_value: '1'
+
+- id: filteredMatSignal
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+
+- id: sensorBoolValue
+  type: bool
+  initial_value: 'false'
+  restore_value: yes
+
+- id: matDownThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '1.5'
+
+- id: matUpThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '3.0'
+
+- id: lower_limit_g
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+- id: upper_limit_g
+  type: float
+  restore_value: yes
+  initial_value: '1.9'
+
+- id: sample_index
+  type: int
+  restore_value: yes
+  initial_value: '0'
+
+- id: array_full
+  type: bool
+  restore_value: yes
+  initial_value: 'false'
+
+- id: daily_samples
+  type: float[48]    # Define an array of 48 float variables
+  restore_value: yes
+  initial_value: '{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}'    # Initialize all elements to 0
+
+- id: on_validation
+  type: int
+  restore_value: yes
+  initial_value: '3'
+
+- id: off_validation
+  type: int
+  restore_value: yes
+  initial_value: '10'
+
+- id: threshold_convergence_factor
+  type: int
+  restore_value: yes
+  initial_value: '7'
+
+- id: reset_counter
+  type: int
+  restore_value: yes
+  initial_value: '0'
 
 binary_sensor:
-  - platform: template
-    name: "Mat Sensor"
-    id: Mat_binary_trigger
-  
-select:
-  - platform: template
-    name: Dropdown Sensitivity
-    id: mat_sensitivity_select
-    options:
-     - "Low weight object (<1 lb) on an uncovered mat, or a heavy weight object on a heavy weight covered mat (e.g. adult human with mat under mattress). Very sensitive, may cause false triggering" # step_event_threshold = 0.06, matGradientReq = 0.04
-     - "Low weight object (~1 lb) on an uncovered mat, or a heavy weight object on a medium weight covered mat (e.g. adult human with mat under rug)." # step_event_threshold = 0.12, matGradientReq = 0.08
-     - "Medium weight object (~1-20 lb) on an uncovered mat, or a heavy weight object on a light weight covered mat (e.g. adult human with mat under light rug)." # step_event_threshold = 0.48, matGradientReq = 0.20
-     - "Heavy weight object (>20 lb) on an uncovered mat, not likely to work well if mat is covered" # step_event_threshold = 0.70, matGradientReq = 0.25
-     - "Custom"
-    optimistic: true
-    on_value:
-      then:
-        - lambda: |-
-            auto index = id(mat_sensitivity_select).active_index();
-            if (index != 4) {
-              id(selectFlag) = true;
-              if (index == 0) {           
-                id(step_event_threshold) = 0.06;
-                id(matGradientReq) = 0.04;
-                id(dropdownSelectIndex) = 0;
-              } else if (index == 1) {
-                id(step_event_threshold) = 0.12;
-                id(matGradientReq) = 0.08;
-                id(dropdownSelectIndex) = 1;
-              } else if (index == 2) {
-                id(step_event_threshold) = 0.48;
-                id(matGradientReq) = 0.20;
-                id(dropdownSelectIndex) = 2;
-              } else if (index == 3) {
-                id(step_event_threshold) = 0.70;
-                id(matGradientReq) = 0.25;
-                id(dropdownSelectIndex) = 3;
-              } 
-              id(step_threshold_number).publish_state(id(step_event_threshold));
-            } else {
-              id(dropdownSelectIndex) = 4;
-            }
-           
+- platform: template
+  name: Bed Sensor
+  id: Bed_binary_trigger
+  device_class: occupancy
 
 number:
-  - platform: template
-    name: "Sensitivity"
-    id: step_threshold_number
-    unit_of_measurement: "V"
-    update_interval: never
-    min_value: 0.001
-    max_value: 0.5
-    step: 0.001
-    optimistic: true
-    on_value:
-      then:
-        - lambda: |-
-            auto index = id(mat_sensitivity_select).active_index();
-            if (id(selectFlag) == true){              
-              if (id(calibration_button).state == true) {
-                id(calibration_button).publish_state(false);
-              }
-              id(selectFlag) = false;
-            } else {
-              id(step_event_threshold) = x;
-              if (index != 4) {
-                auto call = id(mat_sensitivity_select).make_call();
-                call.set_index(4);
-                call.perform();
-              }
-            }
+- platform: template
+  name: Detection Sensitivity (Higher is more sensitive)
+  id: sensitivity_number
+  device_class: voltage
+  entity_category: diagnostic
+  update_interval: never
+  initial_value: 6
+  min_value: 1
+  max_value: 10
+  step: 1
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        id(sensitivity_threshold) = x;
 
-  # # For debugging mat signal gradient
-  - platform: template
-    name: "Speed of pressure requirement"
-    id: gradient_requirement_number
-    unit_of_measurement: "V/s"
-    restore_value: true
-    update_interval: never
-    min_value: 0.001
-    max_value: 0.4
-    step: 0.001
-    optimistic: true
-    on_value:
-      then:
-        - globals.set:
-            id: matGradientReq
-            value: !lambda "return x;"
-        - select.set:
-            id: mat_sensitivity_select
-            option: "Custom"
+- platform: template
+  name: Empty Bed value
+  id: upper_limit_voltage
+  device_class: voltage
+  unit_of_measurement: V
+  entity_category: diagnostic
+  update_interval: never
+  initial_value: 1.9
+  min_value: 1.0
+  max_value: 3.3
+  step: 0.001
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        id(upper_limit_g) = x;
 
-# Un-comment this sensor to watch the sensor is real-time
-sensor:            
-  - platform: template
-    name: "Pressure Voltage"
-    id: visible_pressure_voltage
-    unit_of_measurement: "V"
-    icon: "mdi:sine-wave"
-    accuracy_decimals: 3
-    update_interval: 1s
-    lambda: |-
-      return id(matDataSampledAvg);
-  
-  - platform: template
-    name: "matDownThreshold"
-    id: visible_matDownThreshold
-    unit_of_measurement: "V"
-    icon: "mdi:sine-wave"
-    accuracy_decimals: 3
-    # update_interval: 1s
-    # lambda: |-
-    #   return id(matDownThresholdID);
+- platform: template
+  name: Full Bed value
+  id: lower_limit_voltage
+  device_class: voltage
+  unit_of_measurement: V
+  entity_category: diagnostic
+  update_interval: never
+  initial_value: 1.8
+  min_value: 1.0
+  max_value: 3.3
+  step: 0.001
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        id(lower_limit_g) = x;
 
-  - platform: template
-    name: "matUpThreshold"
-    id: visible_matUpThreshold
-    unit_of_measurement: "V"
-    icon: "mdi:sine-wave"
-    accuracy_decimals: 3
-    # update_interval: 1s
-    # lambda: |-
-    #   return id(matUpThresholdID);
+- platform: template
+  name: Transition to On Delay
+  id: on_validation_number
+  device_class: duration
+  unit_of_measurement: s
+  update_interval: never
+  initial_value: 5
+  min_value: 1
+  max_value: 30
+  step: 1
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        id(on_validation) = x;
 
-  # # For debugging mat signal gradient  
-  - platform: template
-    name: "Gradient viz"
-    id: gradient_viz
-    unit_of_measurement: "V/s"
-    icon: "mdi:sine-wave"
-    accuracy_decimals: 3
-  - platform: template
-    name: "Gradient req viz"
-    id: gradient_req_viz
-    unit_of_measurement: "V/s"
-    icon: "mdi:sine-wave"
-    accuracy_decimals: 3
+- platform: template
+  name: Transition to Off Delay
+  id: off_validation_number
+  device_class: duration
+  unit_of_measurement: s
+  update_interval: never
+  initial_value: 10
+  min_value: 1
+  max_value: 60
+  step: 1
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        id(off_validation) = x;
+
+- platform: template
+  name: Threshold Convergence Factor
+  id: threshold_convergence_factor_number
+  update_interval: never
+  entity_category: diagnostic
+  initial_value: 7
+  min_value: 1
+  max_value: 9
+  step: 1
+  optimistic: true
+  restore_value: true
+  on_value:
+    then:
+    - lambda: |-
+        // Calculate midpoint and adjust thresholds closer or farther away
+        float midpoint = id(lower_limit_g) + 0.25 * (id(upper_limit_g) - id(lower_limit_g)); // moved from 50% between to 25% towards lower  ver 0.1.4
+        // Back calculate the max upper and lower threshold, there will be rounding error here
+        float originalLowerThreshold = (midpoint - (midpoint - id(lower_limit_g)) / (1 - id(threshold_convergence_factor) * 0.1));
+        float originalUpperThreshold = ((id(upper_limit_g) - midpoint) / (1 - id(threshold_convergence_factor) * 0.1) + midpoint);
+        // Adjust threshold around midpoint based on new input to slider 'x'
+        float newLowerThreshold = originalLowerThreshold + (x * 0.1) * (midpoint - originalLowerThreshold);
+        float newUpperThreshold = originalUpperThreshold - (x * 0.1) * (originalUpperThreshold - midpoint);
+
+        /// truncate values to 3 decimals and update thresholds
+        id(lower_limit_voltage).publish_state(((int)(newLowerThreshold * 1000)) / 1000.0);
+        id(upper_limit_voltage).publish_state(((int)(newUpperThreshold * 1000)) / 1000.0);
+
+        // Update the sensitivity base variable based on new changes
+        id(sensitivity_base) = (newUpperThreshold - newLowerThreshold) / 10.0; // 10 steps, 
+
+        id(threshold_convergence_factor) = x;
+
+- platform: template
+  name: Voltage measurement update rate (0 is off)
+  id: volt_update_interval_number
+  device_class: duration
+  unit_of_measurement: s
+  entity_category: diagnostic
+  update_interval: never
+  initial_value: 1
+  min_value: 0
+  max_value: 300
+  step: 1
+  optimistic: true
+  on_value:
+    then:
+      - lambda: |-
+          id(volt_update_interval) = x;
+
+sensor:
+- platform: template
+  name: Pressure Voltage
+  id: visible_pressure_voltage
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:sine-wave
+  accuracy_decimals: 3
+  update_interval: never
+  lambda: |-
+    return id(filteredMatSignal);
+
+
+- platform: template
+  name: matDownThreshold
+  id: visible_matDownThreshold
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:sine-wave
+  accuracy_decimals: 3
+  update_interval: never
+  lambda: |-
+    return id(matDownThresholdID);
+
+- platform: template
+  name: matUpThreshold
+  id: visible_matUpThreshold
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:sine-wave
+  accuracy_decimals: 3
+  update_interval: never
+  lambda: |-
+    return id(matUpThresholdID);
+
+- platform: wifi_signal
+  name: WiFi Signal Strength
+  id: wifi_signal_db
+  update_interval: 60s
+
+- platform: internal_temperature
+  name: Internal Temperature
+
+- platform: template
+  name: Reset Counter
+  id: reset_counter_sensor
+  entity_category: diagnostic
+  accuracy_decimals: 0
 
 switch:
-  - platform: template
-    name: "Calibration"
-    id: calibration_button
-    optimistic: true
+- platform: template
+  name: Calibration (turn on, lay on bed for at least 30s, get out of bed, turn off)
+  id: calibration_button
+  optimistic: true
 
 interval:
-  - interval: 50ms
-    then:
-      lambda: |-
-        // Threshold variables
-        static bool matDownThresholdLock = false;
-        static bool matUpThresholdLock = false;
-        static bool justFlippedOff = false;
-        static bool justFlippedOn = false;
-        static float matDownThreshold = id(matDataSampledAvg) - id(step_event_threshold);
-        static float matUpThreshold = id(matDataSampledAvg) + id(step_event_threshold);
+- interval: 50ms
+  then:
+    lambda: |-
+      // Butterworth low-pass filter coefficients for the main signal (0.5 Hz cutoff)
+      static const float lowPassB[] = {0.07295966, 0.07295966};  // Numerator coefficients
+      static const float lowPassA[] = {1.0, -0.85408069};        // Denominator coefficients
 
-        // Gradient variables
-        static bool matGradientDownApproved = false;
-        static bool matGradientUpApproved = false;
-        static unsigned long matDownThresholdCounter;
-        static unsigned long matUpThresholdCounter;
-        static unsigned long matGradientDownCounter;
-        static unsigned long matGradientUpCounter;
-        static unsigned long matGradientTimer = 45000;
-        static unsigned long matThresholdTimer = 45000;
-        static float previous_matDataAvg = 0;
-        unsigned long currentTime = millis();
+      // Butterworth low-pass filter coefficients for the threshold signal (0.05 Hz cutoff)
+      //static const float thresholdB[] = {0.00779294, 0.00779294};  // Numerator coefficients
+      //static const float thresholdA[] = {1.0, -0.98441413};        // Denominator coefficients
 
-        // Delayed triggering variables
-        static unsigned long matTriggerCounter;
-        static unsigned long matTriggerTimer = 5000;
-        static bool matTriggerDelayOn = false;
+      // Butterworth low-pass filter coefficients for the threshold signal (0.03 Hz cutoff)
+      //const float thresholdB[] = {0.00469032, 0.00469032};  // Numerator coefficients
+      //const float thresholdA[] = {1.0, -0.99061936};        // Denominator coefficients
 
-        // mat sampling variables
-        static int startUpFlag = 1;
-        static const int sliderWindowSize = 7;
-        static float matDataBuffer[sliderWindowSize] = { 0.0 };
-        static int bufferIndex = 0;
-        int voltSampleAvg = 100;
-        float matDataAvg;
+      // Butterworth low-pass filter coefficients for the threshold signal (0.01 Hz cutoff)
+      const float thresholdB[] = {0.00156833, 0.00156833};  // Numerator coefficients
+      const float thresholdA[] = {1.0, -0.99686333};        // Denominator coefficients
 
-        // calibration variables
-        static float calibrationMatDataStart;
-        static bool calibrationFirstLoop = true;
-        static float prevCalibrationChange = 0;
-        static float gradCalibrationMin = 0;
-        float calibrationChange = 0;
+      // Variables for the main low-pass filter
+      static float lowPassPrevInput = 0;          // Stores the last input value for low-pass filter
+      static float lowPassPrevOutput = 0;         // Stores the last output value for low-pass filter
 
-        // on first run through fill the matDataBuffer with the restored value if possible
-        if (startUpFlag) {
-          for (int i = 0; i < sliderWindowSize; i++) {
-            matDataBuffer[i] = id(matDataSampledAvg);
-          }
-          id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
+      // Variables for the threshold low-pass filter
+      static float thresholdPrevInput = 0;        // Stores the last input value for threshold filter
+      static float thresholdPrevOutput = 0;       // Stores the last output value for threshold filter
+
+      // Long-term event tracking
+      static unsigned long lastEventTime = 0;                             // Time of the last detected event
+      //static const unsigned long noEventThreshold = 10 * 60 * 1000;        // 10 minutes in milliseconds, testing removal for 0.1.4
+
+      // Voltage updating data interval
+      static unsigned long intervalTimer = 0;
+      int volt_update_interval_ms = id(volt_update_interval) * 1000; // convert update rate to milliseconds
+      unsigned long currentTime = millis();
+
+      // Off transition validation
+      static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
+      static bool validatingOffTransition = false;              // Flag to indicate "off" validation period
+      int offValidationDuration = id(off_validation) * 1000;    // timer for "off" transition, in milliseconds
+
+      static unsigned long onValidationStartTime = 0;           // Start time for "on" validation timer
+      static bool validatingOnTransition = false;               // Flag to indicate "on" validation period
+      int onValidationDuration = id(on_validation) * 1000;      // timer for "on" transition, in milliseconds
+
+      // Calibration variables
+      static float calibrationMax = 0.0;    // Set to minimum possible signal value
+      static float calibrationMin = 3.3;    // Set to maximum possible signal value
+      //static float sensitivityBase = 0.002; // Initial base for the number template ID: sensitivity_number
+      static bool wasCalibrating = false;
+
+
+      // Fixed threshold limits
+      float fixedUpperLimit = id(upper_limit_g);         // Fixed upper threshold
+      float fixedLowerLimit = id(lower_limit_g);         // Fixed lower threshold
+
+      // Dynamic thresholds
+      float dynamicUpperThreshold;   // Upper dynamic threshold
+      float dynamicLowerThreshold;   // Lower dynamic threshold
+
+      // Threshold offset variables
+      float dynamicThresholdOffset = id(sensitivity_threshold) * id(sensitivity_base); // Offset for dynamic thresholds relative to the threshold signal
+      float longTermThresholdOffset = dynamicThresholdOffset / 2; // Offset for lower threshold after long-term stability
+
+      // Analog pin reading on Lolin C3-Mini board
+      int analogPin = 0;
+
+      static bool startUpFlag = true;
+      // Start up values for signal and threshold filters
+      if (startUpFlag) {
+        // Initialize filters with the first input value
+        float initialVoltage = analogRead(analogPin) * (3.3 / 4095.0);
+        lowPassPrevInput = initialVoltage;
+        lowPassPrevOutput = initialVoltage;
+        thresholdPrevInput = initialVoltage;
+        thresholdPrevOutput = initialVoltage;
+
+        id(reset_counter) += 1;
+        if(id(reset_counter) > 1000) {id(reset_counter) = 0;}
+        id(reset_counter_sensor).publish_state(id(reset_counter));
+
+        // I find that restoring values to numbers can be flaky, so I do this for good measure                  
+        id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+        id(sensitivity_number).publish_state(id(sensitivity_threshold));
+        id(lower_limit_voltage).publish_state(id(lower_limit_g));
+        id(upper_limit_voltage).publish_state(id(upper_limit_g));
+        id(volt_update_interval_number).publish_state(id(volt_update_interval));
+        id(on_validation_number).publish_state(id(on_validation));
+        id(off_validation_number).publish_state(id(off_validation));
+      }
+
+      // Step 1: Read the raw signal from the analog pin
+      const int numSamples = 100;  // Number of readings for averaging
+      float voltageSum = 0;
+      for (int i = 0; i < numSamples; i++) {
+        voltageSum += analogRead(analogPin);  // Collect raw data
+      }
+      float voltage = (voltageSum / numSamples) * (3.3 / 4095.0);         // Average of 100 readings and convert to voltage
+
+      // Step 2: Apply the low-pass filter to the main signal
+      float lowPassOutput = lowPassB[0] * voltage + lowPassB[1] * lowPassPrevInput - lowPassA[1] * lowPassPrevOutput;
+      lowPassPrevInput = voltage;
+      lowPassPrevOutput = lowPassOutput;
+
+      // Step 3: Apply the low-pass filter to the voltage signal for the threshold
+      float thresholdSignal = thresholdB[0] * voltage + thresholdB[1] * thresholdPrevInput - thresholdA[1] * thresholdPrevOutput;
+      thresholdPrevInput = voltage;
+      if (thresholdSignal < fixedLowerLimit) {
+        thresholdPrevOutput = fixedLowerLimit;
+      } else if (thresholdSignal > fixedUpperLimit) {
+        thresholdPrevOutput = fixedUpperLimit;
+      } else {
+        thresholdPrevOutput = thresholdSignal;
+      }      
+
+      // Step 4: Update Upper dynamic threshold
+      dynamicUpperThreshold = constrain(thresholdSignal + dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+
+      // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
+      dynamicLowerThreshold = constrain(thresholdSignal - dynamicThresholdOffset, fixedLowerLimit, fixedUpperLimit);
+
+      // Step 6: Check for calibration and Handle "on" and "off" states
+      if (id(calibration_button).state) {
+        id(sample_index) = 0;  // Reset sampleIndex when calibration starts
+        id(array_full) = false; // Sets the auto calibration to wait for 24hrs of data collection ver0.1.4
+
+        // Calibration mode: Track max and min values
+        if (lowPassOutput > calibrationMax) {
+          calibrationMax = lowPassOutput;
+          float truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          id(upper_limit_voltage).publish_state(truncatedCaliValue);
         }
-
-        // Need to grab 100 samples to get a better average without sampling HA with values
-        int rawDataSum = 0;
-        for (int i = 0; i < voltSampleAvg; i++) {
-          rawDataSum += analogRead(0);
+        if (lowPassOutput < calibrationMin) {
+          calibrationMin = lowPassOutput;
+          float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+          id(lower_limit_voltage).publish_state(truncatedCaliValue);
         }
-        // The array of sampled matData of the last sliderWindowSize iterations
-        matDataBuffer[bufferIndex] = (rawDataSum / voltSampleAvg) * (3.3 / 4095.0);  // Convert to voltage
-
-        // Average the sampled matData
-        float matDataSum = 0;
-        for (int i = 0; i < sliderWindowSize; i++) {
-          matDataSum += matDataBuffer[i];
-        }
-        matDataAvg = matDataSum / sliderWindowSize;
-
-        // Find the gradient between the last matDataAvg and current matDataAvg
-        // on first run through set the gradient to zero
-        float matGradient;
-        if (startUpFlag) {
-          matGradient = 0;
-        } else {
-          matGradient = (matDataAvg - previous_matDataAvg) / 0.050;   // difference divided by interval
-        }            
-
-        if (matDownThresholdLock == true && justFlippedOff == true) {
-          matDownThresholdLock = false;
-        }
-        if (matGradient < -1 * id(matGradientReq)) {
-            matGradientDownApproved = true;
-            matGradientDownCounter = currentTime;
-            id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
-            id(gradient_req_viz).publish_state(id(matGradientReq)); // For debugging mat signal gradient
-            if (matDownThresholdLock == false) {
-              matDownThreshold = previous_matDataAvg - id(step_event_threshold);
-              //matUpThreshold = previous_matDataAvg;
-              id(visible_matDownThreshold).publish_state(matDownThreshold);
-              matDownThresholdLock = true;
-              matDownThresholdCounter = currentTime;
+      } else {
+        if (id(Bed_binary_trigger).state) {
+          // Immediate "off" if low-pass signal exceeds the dynamic upper threshold
+          if (lowPassOutput > dynamicUpperThreshold) {
+            if (!validatingOffTransition) {
+              // Start the validation timer
+              offValidationStartTime = millis();
+              validatingOffTransition = true;
+            } else if (millis() - offValidationStartTime >= offValidationDuration) {
+              // Timer expired: Turn "off"
+              id(sensorBoolValue) = false;
+              id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+              offValidationStartTime = 0;
+              validatingOffTransition = false;
+              lastEventTime = millis();
             }
-        }
-
-        if (matUpThresholdLock == true && justFlippedOn == true) {
-          matUpThresholdLock = false;
-        }
-        if (matGradient > id(matGradientReq)) { // mat can be slower to recover, reduces up requirement
-          matGradientUpApproved = true;
-          matGradientUpCounter = currentTime;
-          id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
-          id(gradient_req_viz).publish_state(id(matGradientReq)); // For debugging mat signal gradient
-          if (matUpThresholdLock == false) {
-            float scaleThreshold;
-            if (id(step_event_threshold) < 0.2) {
-              scaleThreshold = 1.0;
-              } else if (id(step_event_threshold) < 0.5) {
-              scaleThreshold = 0.4;
-              } else {
-              scaleThreshold = 0.3;
-              }
-            matUpThreshold = previous_matDataAvg + id(step_event_threshold) * scaleThreshold; // Recovery can be slower, reduces the threshold requirement
-            //matDownThreshold = previous_matDataAvg;
-            id(visible_matUpThreshold).publish_state(matUpThreshold);
-            matUpThresholdLock = true;
-            matUpThresholdCounter = currentTime;
-          }
-        }
-
-        if (matDownThresholdLock) {
-          if (currentTime - matDownThresholdCounter >= matThresholdTimer) {
-            matDownThresholdLock = false;
-          }
-        }
-
-        if (matUpThresholdLock) {
-          if (currentTime - matUpThresholdCounter >= matThresholdTimer) {
-            matUpThresholdLock = false;
-          }
-        }
-
-        if (matGradientDownApproved == true) {
-          if (currentTime - matGradientDownCounter >= matGradientTimer) {
-            matGradientDownApproved = false;
-          }
-        }
-
-        if (matGradientUpApproved == true) {
-          if (currentTime - matGradientUpCounter >= matGradientTimer) {
-            matGradientUpApproved = false;
-          }
-        }
-
-        justFlippedOn = false;
-        justFlippedOff = false;
-
-        if (matDataAvg < matDownThreshold && matGradientDownApproved) {
-          if (id(Mat_binary_trigger).state != true){
-            justFlippedOn = true;
-            id(sensorBoolValue) = true;
-            id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          }
-        }
-
-        if (matTriggerDelayOn == false){
-          if ((matDataAvg > matUpThreshold && matGradientUpApproved) || (matDataAvg > 1.905)) {
-            matTriggerDelayOn = true;
-            matTriggerCounter = currentTime;
-          }
-        } else {
-          if (currentTime - matTriggerCounter >= matTriggerTimer) {
-            if (matDataAvg > matUpThreshold || matDataAvg > 1.905) {
-              if (id(Mat_binary_trigger).state != false){
-                justFlippedOff = true;
-                id(sensorBoolValue) = false;
-                id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-              }
-            }
-            matTriggerDelayOn = false;
-          }
-        } 
-
-        //if (matDataAvg > matUpThreshold && matGradientUpApproved) {
-        //  justFlippedOff = true;
-        //  id(Mat_binary_trigger).publish_state(false);
-        //}
-
-        if (matDataAvg < 1.89) {
-          if (id(Mat_binary_trigger).state != true){
-            justFlippedOn = true;
-            id(sensorBoolValue) = true;
-            id(Mat_binary_trigger).publish_state(id(sensorBoolValue));
-          }
-        }
-
-        if (id(calibration_button).state == true) {
-          if (calibrationFirstLoop == true) {
-            calibrationFirstLoop = false;
-            calibrationMatDataStart = matDataAvg;
-            id(step_event_threshold) = 0.00;
-            id(step_threshold_number).publish_state(0.00);
           } else {
-            calibrationChange = (calibrationMatDataStart - matDataAvg) * 0.6; // reduce the number a little to ensure the mat can reach and go below the calibration threshold
-            if (calibrationChange > prevCalibrationChange) {
-              float truncatedCaliValue = ((int)(calibrationChange * 1000)) / 1000.0; // need to cut down to only 2 decimals  
-              //id(step_event_threshold) = truncatedCaliValue;
-              id(step_threshold_number).publish_state(truncatedCaliValue);
-
-              if (matGradient < gradCalibrationMin) {
-                id(matGradientReq) = -1 * matGradient * 0.3;
-                gradCalibrationMin = matGradient;
-                //id(gradient_requirement_number).publish_state(id(matGradientReq)); // For debugging mat signal gradient
-              }
-              prevCalibrationChange = calibrationChange;
-            }
+            // Cancel validation if signal drops below dynamic upper threshold
+            offValidationStartTime = 0;
+            validatingOffTransition = false;
           }
         } else {
-          calibrationFirstLoop = true;
-          calibrationChange = 0;
-          prevCalibrationChange = 0;
-          gradCalibrationMin = 0;
+          // Transition to "on" if low-pass signal crosses dynamic lower threshold
+          if (lowPassOutput < dynamicLowerThreshold) {
+            if (!validatingOnTransition) {
+              // Start the validation timer
+              onValidationStartTime = millis();
+              validatingOnTransition = true;
+            } else if (millis() - onValidationStartTime >= onValidationDuration) {
+              // Timer expired: Turn "on"
+              id(sensorBoolValue) = true;
+              id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+              onValidationStartTime = 0;
+              validatingOnTransition = false;
+              lastEventTime = millis();
+            }
+          } else {
+            // Cancel validation if signal rises above dynamic lower threshold
+            onValidationStartTime = 0;
+            validatingOnTransition = false;
+          }
+        }
+      }
+
+      // Step 7: Finalize Calibration if button is turned off
+      if (!id(calibration_button).state && wasCalibrating) {
+
+        float newLowerThreshold = calibrationMin;
+        float newUpperThreshold = calibrationMax;
+
+        // Calculate midpoint and adjust thresholds closer together
+        float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
+        newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+        newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
+
+        float truncatedLowerThreshold = ((int)(newLowerThreshold * 1000)) / 1000.0;
+        id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
+
+        float truncatedUpperThreshold = ((int)(newUpperThreshold * 1000)) / 1000.0;
+        id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
+
+        // Update the sensitivity base variable based on new changes
+        id(sensitivity_base) = (newUpperThreshold - newLowerThreshold) / 10.0; // 10 steps, 
+        //id(sensitivity_number).publish_state(3);
+
+
+        calibrationMax = 0.0;  // Reset for future calibration
+        calibrationMin = 3.3;
+        wasCalibrating = false;
+      } else if (id(calibration_button).state) {
+        wasCalibrating = true;
+      }
+
+      // Step 9: Update voltage output
+      if ( id(volt_update_interval) > 0) {
+          if (currentTime - intervalTimer >= volt_update_interval_ms) {
+            id(visible_pressure_voltage).publish_state(lowPassOutput);
+            id(visible_matDownThreshold).publish_state(dynamicLowerThreshold);
+            id(visible_matUpThreshold).publish_state(dynamicUpperThreshold);
+            intervalTimer = currentTime;
+          }
         }
 
-        //id(gradient_viz).publish_state(matGradient); // For debugging mat signal gradient
-        id(matDataSampledAvg) = matDataAvg;
-        //id(matDownThresholdID) = matDownThreshold;
-        //id(matUpThresholdID) = matUpThreshold;
-        bufferIndex = (bufferIndex + 1) % sliderWindowSize;
-        previous_matDataAvg = matDataAvg;
-        startUpFlag = 0;
+      // Step 8: Update persistent variables
+      id(filteredMatSignal) = lowPassOutput;
+      id(matDownThresholdID) = dynamicLowerThreshold;
+      id(matUpThresholdID) = dynamicUpperThreshold;
+      startUpFlag = false;
+
+- interval: 30min
+  then:
+    lambda: |-
+      // Use global variable for daily_samples
+      int sampleIndex = id(sample_index);  // Access global sampleIndex
+
+      // Debugging: Indicate entering the interval loop
+      //ESP_LOGD("interval_30min", "Processing 30min interval loop");
+
+      // Step 1: Collect the current lowPassOutput and store it in the global buffer
+      id(daily_samples)[sampleIndex] = id(filteredMatSignal);
+      //ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredMatSignal));
+
+      sampleIndex++;
+      if (sampleIndex >= 48) {
+        id(sample_index) = 0;
+        id(array_full) = true;
+        //ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
+      } else {
+        id(sample_index) = sampleIndex; // Update the global sample index
+      }
+
+      // Step 2: Re-evaluate thresholds every 8 hours (16 samples)
+      if (sampleIndex % 16 == 0 && id(array_full)) {
+        // Sort the array in ascending order
+        std::sort(id(daily_samples), id(daily_samples) + 48);
+        //ESP_LOGD("interval_30min", "Sorted daily_samples array");
+
+        // Step 3: Determine if the split index falls in the critical range
+        int splitIndex = 0;
+        float largestGap = 0;
+
+        // Identify the largest gap in the sorted array
+        for (int i = 0; i < 47; i++) {
+          float gap = id(daily_samples)[i + 1] - id(daily_samples)[i];
+          if (gap > largestGap) {
+            largestGap = gap;
+            splitIndex = i;
+          }
+        }
+        //ESP_LOGD("interval_30min", "Largest gap: %.3f at index %d", largestGap, splitIndex);
+
+        // Step 4: Remove extreme values if the split index is in the critical range
+        bool criticalRange = (splitIndex <= 3 || splitIndex >= 44);
+        float filteredSamples[48];
+        int filteredCount = 0;
+
+        if (criticalRange) {
+          for (int i = 4; i < 44; i++) {  // Remove top and bottom 4 values
+            filteredSamples[filteredCount++] = id(daily_samples)[i];
+          }
+          //ESP_LOGD("interval_30min", "Filtered extreme values due to critical range");
+
+          // Recalculate the largest gap with the reduced array
+          splitIndex = 0;
+          largestGap = 0;
+          for (int i = 0; i < filteredCount - 1; i++) {
+            float gap = filteredSamples[i + 1] - filteredSamples[i];
+            if (gap > largestGap) {
+              largestGap = gap;
+              splitIndex = i;
+            }
+          }
+          //ESP_LOGD("interval_30min", "Recalculated largest gap: %.3f at index %d", largestGap, splitIndex);
+
+        } else {
+          for (int i = 0; i < 48; i++) {  // Keep all values if not in critical range
+            filteredSamples[filteredCount++] = id(daily_samples)[i];
+          }
+          //ESP_LOGD("interval_30min", "Retained all values as split index not in critical range");
+        }
+
+        // Check if the largest gap meets the minimum gap requirement
+        float minGap = (id(upper_limit_g) - id(lower_limit_g)) * 0.6; // increased back to 60% in 0.1.4
+        if (largestGap < minGap) {
+          //ESP_LOGD("interval_30min", "Largest gap %.3f is below minGap %.3f. Skipping threshold update.", largestGap, minGap);
+          return;  // No significant gap; likely no bed presence data
+        }
+
+        // Step 5: Split the data into lower and upper halves
+        float lowerHalf[48];
+        int lowerCount = 0;
+        for (int i = 0; i <= splitIndex; i++) {
+          lowerHalf[lowerCount++] = filteredSamples[i];
+        }
+
+        float upperHalf[48];
+        int upperCount = 0;
+        for (int i = splitIndex + 1; i < filteredCount; i++) {
+          upperHalf[upperCount++] = filteredSamples[i];
+        }
+
+        // Step 6: Calculate percentiles for thresholds
+        int lower30thIndex = (int)(lowerCount * 0.3) - 1; // moved from 80% to 30% ver0.1.4
+        if (lower30thIndex < 0) lower30thIndex = 0;
+        int upper20thIndex = (int)(upperCount * 0.2);
+
+        float newLowerThreshold = lowerHalf[lower30thIndex];
+        float newUpperThreshold = upperHalf[upper20thIndex];
+
+        // Calculate midpoint and adjust thresholds closer together
+        float midpoint = newLowerThreshold + 0.25 * (newUpperThreshold - newLowerThreshold); // moved mid point to from 50% between to 25% towards the lower ver0.1.4
+        newLowerThreshold = newLowerThreshold + (id(threshold_convergence_factor) * 0.1) * (midpoint - newLowerThreshold);
+        newUpperThreshold = newUpperThreshold - (id(threshold_convergence_factor) * 0.1) * (newUpperThreshold - midpoint);
+
+        float alpha = 0.85;  // Weight for the new value
+        float updatedLowerThreshold = alpha * newLowerThreshold + (1 - alpha) * id(lower_limit_g);
+        float truncatedLowerThreshold = ((int)(updatedLowerThreshold * 1000)) / 1000.0;
+        id(lower_limit_voltage).publish_state(truncatedLowerThreshold);
+
+        float updatedUpperThreshold = alpha * newUpperThreshold + (1 - alpha) * id(upper_limit_g);
+        float truncatedUpperThreshold = ((int)(updatedUpperThreshold * 1000)) / 1000.0;
+        id(upper_limit_voltage).publish_state(truncatedUpperThreshold);
+
+        // Update the sensitivity base variable based on new changes
+        id(sensitivity_base) = (newUpperThreshold - newLowerThreshold) / 10.0; // 10 steps, 
+
+        //ESP_LOGD("interval_30min", "Updated thresholds: Lower = %.3f, Upper = %.3f", truncatedLowerThreshold, truncatedUpperThreshold);
+      }
