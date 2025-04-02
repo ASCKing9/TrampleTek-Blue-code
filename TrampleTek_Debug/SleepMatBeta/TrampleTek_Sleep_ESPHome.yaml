@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.SlumberTek
-    version: 0.2.0
+    version: 0.2.1
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -221,7 +221,6 @@ number:
         } else {
           id(sensitivity_threshold_sen_true) = x;
         }
-        
 
 - platform: template
   name: Empty Bed value
@@ -345,8 +344,8 @@ number:
   optimistic: true
   on_value:
     then:
-      - lambda: |-
-          id(volt_update_interval) = x;
+    - lambda: |-
+        id(volt_update_interval) = x;
 
 sensor:
 - platform: template
@@ -409,12 +408,13 @@ sensor:
   pin: GPIO0
   id: GPIO0_Reading
   internal: true
+  raw: true
   attenuation: 12db
-  update_interval: 10ms
+  update_interval: 2ms
   filters:
-    - sliding_window_moving_average:
-        window_size: 5
-        send_every: 5
+  - sliding_window_moving_average:
+      window_size: 25
+      send_every: 25
 
 switch:
 - platform: template
@@ -429,19 +429,11 @@ switch:
   icon: mdi:cloud-upload-outline
   entity_category: diagnostic
   optimistic: true
-  restore_mode: RESTORE_DEFAULT_ON 
+  restore_mode: RESTORE_DEFAULT_ON
   turn_on_action:
-    - lambda: !lambda id(mqtt_enable) = true;
-    # - mqtt.enable:
-    # lambda: |-
-    #     id(mqtt_enable) = true;
-    #     id(mqtt_client).enable();
+  - lambda: !lambda id(mqtt_enable) = true;
   turn_off_action:
-    - lambda: !lambda id(mqtt_enable) = false;
-    # - mqtt.disable:
-    # lambda: |-
-    #     id(mqtt_enable) = false;
-    #     id(mqtt_client).disable();
+  - lambda: !lambda id(mqtt_enable) = false;
 
 - platform: template
   name: Increased out of bed sensitivity mode
@@ -449,16 +441,16 @@ switch:
   icon: mdi:arrow-up-circle-outline
   entity_category: diagnostic
   optimistic: true
-  restore_mode: RESTORE_DEFAULT_OFF 
+  restore_mode: RESTORE_DEFAULT_OFF
   turn_on_action:
-      lambda: |-
-        id(sensitive_mode) = true;
-        id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_true));;
+    lambda: |-
+      id(sensitive_mode) = true;
+      id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_true));;
   turn_off_action:
-      lambda: |-
-        id(sensitive_mode) = false;
-        id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_false));
-        
+    lambda: |-
+      id(sensitive_mode) = false;
+      id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_false));
+
 
 interval:
 - interval: 50ms
@@ -510,6 +502,7 @@ interval:
       static float calibrationMax = 0.0;    // Set to minimum possible signal value
       static float calibrationMin = 3.3;    // Set to maximum possible signal value
       static bool wasCalibrating = false;
+      static unsigned long calibrationTimer = 0;
 
       // Fixed threshold limits
       float fixedUpperLimit = id(upper_limit_g);         // Fixed upper threshold
@@ -538,7 +531,7 @@ interval:
       // Start up values for signal and threshold filters
       if (startUpFlag) {
         // Initialize filters with the first input value
-        float initialVoltage = id(GPIO0_Reading).state;
+        float initialVoltage = id(GPIO0_Reading).state * (3.3 / 4095.0); // Convert from raw counts to Voltage
         //float initialVoltage = analogRead(analogPin) * (3.3 / 4095.0);
         lowPassPrevInput = initialVoltage;
         lowPassPrevOutput = initialVoltage;
@@ -559,7 +552,7 @@ interval:
         id(off_validation_number).publish_state(id(off_validation));
       }
 
-      float voltage = id(GPIO0_Reading).state;
+      float voltage = id(GPIO0_Reading).state * (3.3/4095.0); // Convert from raw counts to Voltage
       //ESP_LOGD("interval_50ms", "voltage from id(GPIO0_Reading).state: %.3f", voltage);
 
       // Step 2: Apply the low-pass filter to the main signal
@@ -600,17 +593,24 @@ interval:
       if (id(calibration_button).state) {
         id(sample_index) = 0;  // Reset sampleIndex when calibration starts
         id(array_full) = false; // Sets the auto calibration to wait for 24hrs of data collection ver0.1.4
+        
+        // only publish calibration at a rate of once a second
+        if (currentTime - calibrationTimer >= 1000) {
 
-        // Calibration mode: Track max and min values
-        if (lowPassOutput > calibrationMax) {
-          calibrationMax = lowPassOutput;
-          float truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(upper_limit_voltage).publish_state(truncatedCaliValue);
-        }
-        if (lowPassOutput < calibrationMin) {
-          calibrationMin = lowPassOutput;
-          float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
-          id(lower_limit_voltage).publish_state(truncatedCaliValue);
+          // Calibration mode: Track max and min values
+          if (lowPassOutput > calibrationMax) {
+            calibrationMax = lowPassOutput;
+            float truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+            id(upper_limit_voltage).publish_state(truncatedCaliValue);
+            ESP_LOGD("calibration", "New empty bed threshold: %.3f", truncatedCaliValue);
+          }
+          if (lowPassOutput < calibrationMin) {
+            calibrationMin = lowPassOutput;
+            float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+            id(lower_limit_voltage).publish_state(truncatedCaliValue);
+            ESP_LOGD("calibration", "New full bed threshold: %.3f", truncatedCaliValue);
+          }
+          calibrationTimer = currentTime;
         }
       } else {
         if (id(Bed_binary_trigger).state) {
@@ -688,7 +688,7 @@ interval:
       static float prevLowPassOutputPub = lowPassOutput;
       static float prevDynLowerThresPub = dynamicLowerThreshold;
       static float prevDynUpperThresPub = dynamicUpperThreshold;
-      float signalChangeRequirement = 0.003; 
+      float signalChangeRequirement = 0.004; // roughly 5 counts of 3.3/4095 resolution
       if ( id(volt_update_interval) > 0) {
           if (currentTime - intervalTimer >= volt_update_interval_ms || startUpFlag) {
             // Only publish the new value 

@@ -1,6 +1,6 @@
 {
   "name": "SlumberTek Firmware",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "home_assistant_domain": "esphome",
   "new_install_skip_erase": false,
   "builds": [
@@ -8,8 +8,8 @@
       "chipFamily": "ESP32-C3",
       "ota": {
         "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.ota.bin",
-        "md5": "6ffd4d42c52e68a6358626ae8933b5ca",
-        "summary": "MAJOR CHANGES: You MUST recalibrate after update. Send/export data FIRST, name changes will wipe old history and break automations. MQTT logging ON by default (can disable). Switched to ESP-IDF framework, new out-of-bed mode, icons, UI changes.",
+        "md5": "7c4b396cbb6181c4d2122b01e72d0788",
+        "summary": "Quick-fix to revert changes to voltage calculations (will need to recalibrate, sorry!) IF YOU HAVEN'T UPDATED FROM 0.1.4, please send/export data FIRST, name changes will wipe old history and break automations. MQTT logging ON by default (can disable).",
         "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
       },
       "parts": [

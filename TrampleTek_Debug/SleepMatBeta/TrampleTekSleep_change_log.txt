@@ -1,5 +1,14 @@
 Go to the ASC Discord channel if you have any questions about the changes - https://discord.gg/cB9P6NmYJg
 
+Ver 0.2.2 (notes, not released)
+ - Keeping an eye on constraining the upper/lower dynamic thresholds, seems slightly broken
+
+Ver 0.2.1 (notes, not released)
+ - Limited calibration publishing loop to 1 second to not spam MQTT service
+ - Added ADC sensor to "raw: true" to regain some lost dynamic voltage range
+ - To reduce how often voltage publishes, voltage must change at least 0.004V
+ - Increased ADC sensor reading to 2ms and averaging over 25 samples to help reduce signal noise
+
 Ver 0.2.0 (release: 3/27/25)
  - MAJOR CHANGES:
       - MQTT logging is now active, YOU CAN TURN THIS OFF, but it is set to be ON by default
