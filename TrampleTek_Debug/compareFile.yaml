@@ -433,16 +433,10 @@ switch:
   restore_mode: RESTORE_DEFAULT_ON
   turn_on_action:
   - lambda: !lambda id(mqtt_enable) = true;
-    # - mqtt.enable:
-    # lambda: |-
-    #     id(mqtt_enable) = true;
-    #     id(mqtt_client).enable();
+
   turn_off_action:
   - lambda: !lambda id(mqtt_enable) = false;
-    # - mqtt.disable:
-    # lambda: |-
-    #     id(mqtt_enable) = false;
-    #     id(mqtt_client).disable();
+
 
 - platform: template
   name: Increased out of bed sensitivity mode
@@ -561,7 +555,7 @@ interval:
         id(off_validation_number).publish_state(id(off_validation));
       }
 
-      float voltage = id(GPIO0_Reading).state * (3.3/4095.0);
+      float voltage = id(GPIO0_Reading).state * (3.3/4095.0); // Convert from raw counts to Voltage
       //ESP_LOGD("interval_50ms", "voltage from id(GPIO0_Reading).state: %.3f", voltage);
 
       // Step 2: Apply the low-pass filter to the main signal
@@ -697,7 +691,7 @@ interval:
       static float prevLowPassOutputPub = lowPassOutput;
       static float prevDynLowerThresPub = dynamicLowerThreshold;
       static float prevDynUpperThresPub = dynamicUpperThreshold;
-      float signalChangeRequirement = 0.004; 
+      float signalChangeRequirement = 0.004; // roughly 5 counts of 3.3/4095 resolution
       if ( id(volt_update_interval) > 0) {
           if (currentTime - intervalTimer >= volt_update_interval_ms || startUpFlag) {
             // Only publish the new value 

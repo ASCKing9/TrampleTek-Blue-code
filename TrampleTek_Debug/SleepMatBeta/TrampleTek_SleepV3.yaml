@@ -1,11 +1,11 @@
 substitutions:
-  name: slumbertek-0470f0
-  friendly_name: SlumberTek 0470f0
+  name: slumbertek
+  friendly_name: SlumberTek
 
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  name_add_mac_suffix: false
+  name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.SlumberTek
     version: 0.2.0
@@ -57,7 +57,7 @@ improv_serial:
 esp32_improv:
   authorizer: none
 
-# web_server:
+# web_server: # removed because it was casuing random device crashes randomly
 
 captive_portal:
 
