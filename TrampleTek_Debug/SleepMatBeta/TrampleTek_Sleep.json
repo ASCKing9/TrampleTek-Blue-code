@@ -7,14 +7,14 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.ota.bin",
-        "md5": "7c4b396cbb6181c4d2122b01e72d0788",
+        "path": "https://raw.githubusercontent.com/AppliedSensorCo/ASC-product-code/main/SlumberTek/slumbertek.ota.bin",
+        "md5": "74772c5e8676c56b5747823a4c7cb171",
         "summary": "Quick-fix to revert changes to voltage calculations (will need to recalibrate, sorry!) IF YOU HAVEN'T UPDATED FROM 0.1.4, please send/export data FIRST, name changes will wipe old history and break automations. MQTT logging ON by default (can disable).",
-        "release_url": "https://github.com/ASCKing9/TrampleTek-Blue-code/blob/main/TrampleTek_Debug/SleepMatBeta/TrampleTekSleep_change_log.txt"        
+        "release_url": "https://github.com/AppliedSensorCo/ASC-product-code/blob/main/SlumberTek/SlumberTek_change_log.txt"        
       },
       "parts": [
         {
-          "path": "https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/main/TrampleTek_Debug/SleepMatBeta/slumbertek.factory.bin",
+          "path": "https://raw.githubusercontent.com/AppliedSensorCo/ASC-product-code/main/SlumberTek/slumbertek.factory.bin",
           "offset": 0
         }
       ]

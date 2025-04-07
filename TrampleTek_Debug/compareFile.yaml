@@ -1,6 +1,6 @@
 substitutions:
-  name: slumbertek-03458c
-  friendly_name: SlumberTek 03458c
+  name: slumbertek
+  friendly_name: SlumberTek
 
 esphome:
   name: ${name}
@@ -8,7 +8,7 @@ esphome:
   name_add_mac_suffix: false
   project:
     name: AppliedSensorCo.SlumberTek
-    version: 0.2.0
+    version: 0.2.1
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -34,7 +34,7 @@ update:
   id: update_http_request
   name: Firmware
   source: 
-    https://raw.githubusercontent.com/ASCKing9/TrampleTek-Blue-code/refs/heads/main/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep.json
+    https://raw.githubusercontent.com/AppliedSensorCo/ASC-product-code/main/SlumberTek/SlumberTek.json
   update_interval: 6h
 
 http_request:
@@ -166,12 +166,12 @@ globals:
 - id: on_validation
   type: int
   restore_value: yes
-  initial_value: '3'
+  initial_value: '1'
 
 - id: off_validation
   type: int
   restore_value: yes
-  initial_value: '10'
+  initial_value: '3'
 
 - id: threshold_convergence_factor
   type: int
@@ -222,7 +222,6 @@ number:
           id(sensitivity_threshold_sen_true) = x;
         }
 
-
 - platform: template
   name: Empty Bed value
   id: upper_limit_voltage
@@ -268,9 +267,9 @@ number:
   icon: mdi:progress-download
   unit_of_measurement: s
   update_interval: never
-  initial_value: 5
+  initial_value: 1
   min_value: 1
-  max_value: 30
+  max_value: 10
   step: 1
   optimistic: true
   restore_value: true
@@ -286,9 +285,9 @@ number:
   icon: mdi:progress-upload
   unit_of_measurement: s
   update_interval: never
-  initial_value: 10
+  initial_value: 3
   min_value: 1
-  max_value: 60
+  max_value: 20
   step: 1
   optimistic: true
   restore_value: true
@@ -433,10 +432,8 @@ switch:
   restore_mode: RESTORE_DEFAULT_ON
   turn_on_action:
   - lambda: !lambda id(mqtt_enable) = true;
-
   turn_off_action:
   - lambda: !lambda id(mqtt_enable) = false;
-
 
 - platform: template
   name: Increased out of bed sensitivity mode
@@ -534,7 +531,7 @@ interval:
       // Start up values for signal and threshold filters
       if (startUpFlag) {
         // Initialize filters with the first input value
-        float initialVoltage = id(GPIO0_Reading).state * (3.3 / 4095.0);
+        float initialVoltage = id(GPIO0_Reading).state * (3.3 / 4095.0); // Convert from raw counts to Voltage
         //float initialVoltage = analogRead(analogPin) * (3.3 / 4095.0);
         lowPassPrevInput = initialVoltage;
         lowPassPrevOutput = initialVoltage;
@@ -585,7 +582,7 @@ interval:
         dynamicUpperThreshold = fixedUpperLimit;
       }
 
-      // Step 5: Update Lower dynamic threshold with Long-term adjustment if needed
+      // Step 5: Update Lower dynamic threshold
       dynamicLowerThreshold = 
       (thresholdSignal - dynamicThresholdOffset < fixedLowerLimit) ? fixedLowerLimit :
       (thresholdSignal - dynamicThresholdOffset > fixedUpperLimit) ? fixedUpperLimit :
