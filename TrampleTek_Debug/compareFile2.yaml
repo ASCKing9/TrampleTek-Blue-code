@@ -1,6 +1,6 @@
 substitutions:
-  name: slumbertek
-  friendly_name: SlumberTek
+  name: slumbertek-03458c
+  friendly_name: SlumberTek 03458c
 
 esphome:
   name: ${name}
@@ -54,8 +54,8 @@ dashboard_import:
 
 improv_serial:
 
-esp32_improv:
-  authorizer: none
+# esp32_improv:
+#   authorizer: none
 
 # web_server: # removed because it was casuing random device crashes randomly
 
@@ -450,6 +450,11 @@ switch:
     lambda: |-
       id(sensitive_mode) = false;
       id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_false));
+
+button:
+  - platform: restart
+    name: "SlumberTek Restart"
+    entity_category: diagnostic
 
 
 interval:

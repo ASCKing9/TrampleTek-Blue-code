@@ -5,10 +5,10 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  name_add_mac_suffix: false
+  name_add_mac_suffix: true
   project:
     name: AppliedSensorCo.SlumberTek
-    version: 0.2.1
+    version: 0.2.2
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -49,13 +49,13 @@ wifi:
 
 dashboard_import:
   package_import_url: 
-    github://ASCKing9/TrampleTek-Blue-code/TrampleTek_Debug/SleepMatBeta/TrampleTek_Sleep_ESPHome.yaml@main
+    github://AppliedSensorCo/ASC-product-code/SlumberTek/SlumberTek_ESPHome.yaml@main
   import_full_config: true
 
 improv_serial:
 
-esp32_improv:
-  authorizer: none
+# esp32_improv:
+#   authorizer: none # removed in 0.2.2 because it was bloating the size of the install file
 
 # web_server: # removed because it was casuing random device crashes randomly
 
@@ -451,6 +451,10 @@ switch:
       id(sensitive_mode) = false;
       id(sensitivity_number).publish_state(id(sensitivity_threshold_sen_false));
 
+button:
+- platform: restart
+  name: "SlumberTek Restart"
+  entity_category: diagnostic
 
 interval:
 - interval: 50ms
