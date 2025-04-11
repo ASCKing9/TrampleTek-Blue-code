@@ -9,7 +9,7 @@
       "ota": {
         "path": "https://raw.githubusercontent.com/AppliedSensorCo/ASC-product-code/main/SlumberTek/slumbertek.ota.bin",
         "md5": "7f21f782db8e59d41356d8477f59dddb",
-        "summary": "Quick-fix to revert changes to voltage calculations (will need to recalibrate, sorry!) IF YOU HAVEN'T UPDATED FROM 0.1.4, please send/export data FIRST, name changes will wipe old history and break automations. MQTT logging ON by default (can disable).",
+        "summary": "IF YOU'RE UPDATING FROM 0.1.4 USING HA's OTA, YOU MUST DO A USB INSTALL via https://docs.asc.com/EasyModeInstall.html to cleanly upgrade to 0.2.x. Ver 0.2.2 adds reset button, removes BLE Wi-Fi provisioning.",
         "release_url": "https://github.com/AppliedSensorCo/ASC-product-code/blob/main/SlumberTek/SlumberTek_change_log.txt"        
       },
       "parts": [
