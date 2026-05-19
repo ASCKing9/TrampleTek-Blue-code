@@ -1,0 +1,1003 @@
+substitutions:
+  name: slumbertek
+  friendly_name: SlumberTek
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+    # type: arduino
+
+# Enable logging
+logger:
+  logs:
+    sensor: WARN
+
+ota:
+- platform: esphome
+
+wifi:
+  output_power: 8.5dB #!!!!!!!! MAKE SURE TO HAVE THIS LINE!!!!! It's known issue with Wemos Lolin c3 mini's
+  reboot_timeout: 10s
+  ssid: !secret wifi_ssid # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  password: !secret wifi_password # These are not part of the tt-sleep.factory.bin or tt-sleep.ota.bin, these are only added when you "take control" of the device
+  ap:
+    ssid: SlumberTek Fallback Hotspot
+
+improv_serial:
+
+captive_portal:
+
+mqtt:
+  # All MQTT publishes send with the $name (not the friendly name)
+  # All pubs are defaultly SlumberTek-XXXXXX/number/ or SlumberTek-XXXXXX/sensor/ etc. where the XXXXXX is the last 6 digits of the ESP's MAC address
+  # The  MQTT data goes to an AWS server and only ASC has creditentials to subscribe to the data.
+  id: mqtt_client
+  broker: mqtt.asc.com
+  port: 8883
+  discovery: false
+  enable_on_boot: true
+  reboot_timeout: 0s
+  discovery_retain: false
+  log_topic: null
+  skip_cert_cn_check: true
+  idf_send_async: false
+  certificate_authority: |
+    -----BEGIN CERTIFICATE-----
+    MIIDtzCCAp+gAwIBAgIUFEakDzgjAXiPPIKqREM2ntBCrcQwDQYJKoZIhvcNAQEL
+    BQAwajELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcM
+    B1NlYXR0bGUxDDAKBgNVBAoMA0FTQzEQMA4GA1UECwwHTVFUVC1DQTEUMBIGA1UE
+    AwwLQVNDIE1RVFQgQ0EwIBcNMjUwMzI2MDIxMTE1WhgPMjA1MjA4MTAwMjExMTVa
+    MGoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRAwDgYDVQQHDAdT
+    ZWF0dGxlMQwwCgYDVQQKDANBU0MxEDAOBgNVBAsMB01RVFQtQ0ExFDASBgNVBAMM
+    C0FTQyBNUVRUIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsOaq
+    lRpFoOsNUHtSj/sxPtfnpK8JITcnJRd0KlOD6514g6fysgTNw4J+Aq3Vg6L67oGx
+    wE9uxMe+DXBdSn3qb/QB+63t7OWIQNSB9NNorQUfvR7ZA3L9OpRD8I1+fhCDX7rm
+    3U67VuJJYUdApOSOfliP0eSPxRA63yCIEflmDrnoHJHs7mw1gDdXCEEIg5qlrlKT
+    GJes1WhurZpN/4Esyy2eqg5HMlRwpk1+LLkjkdsqFCQf2HUeApil0Dkr5BbRzUyH
+    AcnQYPFCG6uLBTW004bEZ5llhlXMi/hgP50mpGns0Owc8DDssfDjHbVofZ53xe4T
+    kmx7RHGAqAZA2lslbQIDAQABo1MwUTAdBgNVHQ4EFgQUr5X7FnXJkvzTdpdFiQw2
+    eqFJl48wHwYDVR0jBBgwFoAUr5X7FnXJkvzTdpdFiQw2eqFJl48wDwYDVR0TAQH/
+    BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAAlHuYRy08Wuaydn++xXKbYqbKJNY
+    7c4EQzebNhtUF+SxU/z4tlo4ZNDbQiyudXLw7k0ajZ23JVO+NwwA5/CqNOZCqEfm
+    ReTuQDRVsEan+0Us94aAVnfrBq2qk32r5GW+3PJFkeWghAzpys24c2YksMdayx8l
+    89zBR4AYQhxumrTklXcVH4HyWsmWYdvyqtQroT/UmR3jWSj6gY3Bk7YgTUOwlo6z
+    Mzzqbza1E8bawwUJlo1GGREjelMNrouZMqQPFGwjOPUbcVL6fV4LQmnD3KQNMazs
+    SAwGtYIVanPGF/XvobyAXqa9aR0fER2BTNitteH8XgZWDPMO7sLV7P//WA==
+    -----END CERTIFICATE-----
+
+globals:
+- id: full_bed_sensitivity_threshold
+  type: int
+  restore_value: yes
+  initial_value: '9'
+
+- id: empty_bed_sensitivity_threshold
+  type: int
+  restore_value: yes
+  initial_value: '0'
+
+- id: sensitivity_base
+  type: float
+  restore_value: yes
+  initial_value: '0.01'
+
+- id: volt_update_interval
+  type: int
+  restore_value: yes
+  initial_value: '1'
+
+- id: filteredSignal
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+
+- id: sensorBoolValue
+  type: bool
+  initial_value: 'false'
+  restore_value: yes
+
+- id: dynOnThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '1.5'
+
+- id: dynOffThresholdID
+  type: float
+  restore_value: yes
+  initial_value: '3.0'
+
+- id: empty_bed_limit_g
+  type: float
+  restore_value: yes
+  initial_value: '1.9'
+
+- id: full_bed_limit_g
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+
+- id: sample_index
+  type: int
+  restore_value: yes
+  initial_value: '0'
+
+- id: array_full
+  type: bool
+  restore_value: yes
+  initial_value: 'false'
+
+- id: daily_samples
+  type: float[48]    # Define an array of 48 float variables
+  restore_value: yes
+  initial_value: '{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}'    # Initialize all elements to 0
+
+- id: on_validation
+  type: int
+  restore_value: yes
+  initial_value: '1'
+
+- id: off_validation
+  type: int
+  restore_value: yes
+  initial_value: '3'
+
+- id: reset_counter
+  type: int
+  restore_value: yes
+  initial_value: '0'
+
+- id: mqtt_enable
+  type: bool
+  restore_value: yes
+  initial_value: 'true'
+
+- id: auto_cal_interval
+  type: int
+  restore_value: yes
+  initial_value: '8'
+
+- id: first_ever_cali
+  type: bool
+  restore_value: yes
+  initial_value: 'false'
+
+- id: samples_since_last_cali
+  type: int
+  restore_value: yes
+  initial_value: '0'
+
+- id: manual_cali_detect
+  type: bool
+  restore_value: yes
+  initial_value: 'false'
+
+- id: filter_amount
+  type: int
+  restore_value: yes
+  initial_value: '1'
+
+- id: auto_cali_triggering_sensitivity
+  type: int
+  restore_value: yes
+  initial_value: '75'
+
+- id: midpoint_g
+  type: float
+  restore_value: yes
+  initial_value: '1.85'
+
+- id: midpoint_adjuster_g
+  type: int
+  restore_value: yes
+  initial_value: '30'
+
+- id: midpoint_pressure_max_g
+  type: float
+  restore_value: yes
+  initial_value: '1.9'
+
+- id: midpoint_pressure_min_g
+  type: float
+  restore_value: yes
+  initial_value: '1.8'
+
+- id: empty_bed_adjuster_g
+  type: int
+  restore_value: yes
+  initial_value: '30'
+
+- id: full_bed_adjuster_g
+  type: int
+  restore_value: yes
+  initial_value: '30'
+
+- id: limit_adjuster_amount
+  type: float
+  restore_value: yes
+  initial_value: '0.02'
+
+binary_sensor:
+- platform: template
+  name: Bed Sensor
+  id: Bed_binary_trigger
+  device_class: occupancy
+  retain: false
+
+text_sensor:
+- platform: template
+  name: Calibration Status
+  id: calibration_status_message
+  update_interval: never
+  icon: mdi:alert-circle-outline
+  retain: false
+
+number:
+- platform: template
+  name: Empty Bed Detection Sensitivity (0 turns off dynamic threshold, higher is more sensitive)
+  id: empty_bed_sensitivity_number
+  entity_category: diagnostic
+  icon: mdi:tune
+  update_interval: never
+  initial_value: 0
+  min_value: 0
+  max_value: 9
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(empty_bed_sensitivity_threshold) = x;
+
+- platform: template
+  name: Full Bed Detection Sensitivity (0 turns off dynamic threshold, higher is more sensitive)
+  id: full_bed_sensitivity_number
+  entity_category: diagnostic
+  icon: mdi:tune
+  update_interval: never
+  initial_value: 9
+  min_value: 0
+  max_value: 9
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(full_bed_sensitivity_threshold) = x;
+
+- platform: template
+  name: Empty Bed threshold adjuster (percentage distance from auto-calibration Midpoint Estimate)
+  id: empty_bed_limit_voltage_adjuster
+  entity_category: diagnostic
+  icon: mdi:arrow-expand-up
+  unit_of_measurement: '%'
+  update_interval: never
+  initial_value: 30
+  min_value: 5
+  max_value: 100
+  step: 5
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(empty_bed_adjuster_g) = x;
+        id(bed_adjuster_script).execute();
+
+
+- platform: template
+  name: Full Bed threshold adjuster (percentage distance from auto-calibration Midpoint Estimate)
+  id: full_bed_limit_voltage_adjuster
+  entity_category: diagnostic
+  icon: mdi:arrow-expand-down
+  unit_of_measurement: '%'
+  update_interval: never
+  initial_value: 30
+  min_value: 5
+  max_value: 100
+  step: 5
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(full_bed_adjuster_g) = x;
+        id(bed_adjuster_script).execute();
+
+- platform: template
+  name: Auto-calibration Midpoint adjuster (shifts Midpoint up and down)
+  id: auto_cali_midpoint_adjuster
+  entity_category: diagnostic
+  icon: mdi:align-vertical-distribute
+  unit_of_measurement: '%'
+  update_interval: never
+  initial_value: 30
+  min_value: 5
+  max_value: 100
+  step: 5
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(midpoint_adjuster_g) = x;
+        // Recalculate midpoint from previous calibration
+        float largestGap = id(midpoint_pressure_max_g) - id(midpoint_pressure_min_g);        
+        float newMidpoint = id(midpoint_pressure_min_g) + (largestGap * x) / 100.0; // largestGap is multiplied by midpoint_adjuster (which is a percent)
+
+        // Update midpoint_g
+        id(midpoint_g) = ((int)(newMidpoint * 1000)) / 1000.0; // Truncates to 3 decimals
+        id(visible_midpoint).publish_state(id(midpoint_g));
+
+        // update thresholds
+        id(bed_adjuster_script).execute();
+
+- platform: template
+  name: Transition to On Delay
+  id: on_validation_number
+  device_class: duration
+  icon: mdi:progress-download
+  unit_of_measurement: s
+  update_interval: never
+  initial_value: 1
+  min_value: 1
+  max_value: 10
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(on_validation) = x;
+
+- platform: template
+  name: Transition to Off Delay
+  id: off_validation_number
+  device_class: duration
+  icon: mdi:progress-upload
+  unit_of_measurement: s
+  update_interval: never
+  initial_value: 3
+  min_value: 1
+  max_value: 20
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(off_validation) = x;
+
+- platform: template
+  name: Update rate (0 is off)
+  id: update_interval_number
+  device_class: duration
+  unit_of_measurement: s
+  entity_category: diagnostic
+  icon: mdi:cloud-sync-outline
+  update_interval: never
+  initial_value: 1
+  min_value: 0
+  max_value: 300
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(volt_update_interval) = x;
+
+- platform: template
+  name: Auto-calibration interval (0 is off)
+  id: auto_calibration_number
+  device_class: duration
+  unit_of_measurement: hr
+  entity_category: diagnostic
+  icon: mdi:timer-edit-outline
+  update_interval: never
+  initial_value: 8
+  min_value: 0
+  max_value: 24
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(auto_cal_interval) = x;
+        id(update_status_message).execute();
+
+- platform: template
+  name: Pressure Voltage Filter (1 fast, 2 medium, 3 slow)
+  id: filter_change_number
+  entity_category: diagnostic
+  icon: mdi:filter-cog-outline
+  update_interval: never
+  initial_value: 1
+  min_value: 1
+  max_value: 3
+  step: 1
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(filter_amount) = x;
+
+- platform: template
+  name: Auto-calibration trigger sensitivity (How much the last 24hr Pressure Voltage range must be over the current Full-Empty bed threshold gap to trigger auto-calibration)
+  id: auto_cali_trigger_number
+  entity_category: diagnostic
+  icon: mdi:cog-sync-outline
+  unit_of_measurement: '%'
+  update_interval: never
+  initial_value: 75
+  min_value: 50
+  max_value: 250
+  step: 25
+  optimistic: true
+  restore_value: true
+  retain: false
+  on_value:
+    then:
+    - lambda: |-
+        id(auto_cali_triggering_sensitivity) = x;
+
+sensor:
+- platform: template
+  name: Pressure Voltage
+  id: visible_pressure_voltage
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:weight-kilogram
+  accuracy_decimals: 3
+  update_interval: never
+  retain: false
+  lambda: |-
+    return id(filteredSignal);
+
+- platform: template
+  name: Dynamic Empty Bed Threshold
+  id: visible_dynOffThreshold
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:bed-empty
+  accuracy_decimals: 3
+  update_interval: never
+  retain: false
+  lambda: |-
+    return id(dynOffThresholdID);
+
+- platform: template
+  name: Dynamic Full Bed Threshold
+  id: visible_dynOnThreshold
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  icon: mdi:bed
+  accuracy_decimals: 3
+  update_interval: never
+  retain: false
+  lambda: |-
+    return id(dynOnThresholdID);
+
+- platform: template
+  name: Empty Bed value
+  id: empty_bed_limit_voltage
+  device_class: voltage
+  unit_of_measurement: V
+  entity_category: diagnostic
+  icon: mdi:bed-empty
+  update_interval: never
+  accuracy_decimals: 3
+  retain: false
+  lambda: |-
+    return id(empty_bed_limit_g);
+
+- platform: template
+  name: Full Bed value
+  id: full_bed_limit_voltage
+  device_class: voltage
+  unit_of_measurement: V
+  entity_category: diagnostic
+  icon: mdi:bed
+  update_interval: never
+  accuracy_decimals: 3
+  retain: false
+  lambda: |-
+    return id(full_bed_limit_g);
+
+- platform: template
+  name: Midpoint Estimate
+  id: visible_midpoint
+  unit_of_measurement: V
+  device_class: voltage
+  state_class: measurement
+  entity_category: diagnostic
+  accuracy_decimals: 3
+  update_interval: never
+  retain: false
+  lambda: |-
+    return id(midpoint_g);
+
+- platform: wifi_signal
+  name: WiFi Signal Strength
+  id: wifi_signal_db
+  update_interval: 5min
+  retain: false
+
+- platform: internal_temperature
+  name: Internal Temperature
+  update_interval: 5min
+  retain: false
+
+- platform: template
+  name: Reset Counter
+  id: reset_counter_sensor
+  entity_category: diagnostic
+  icon: mdi:reload-alert
+  accuracy_decimals: 0
+  retain: false
+
+- platform: adc
+  pin: GPIO0
+  id: GPIO0_Reading
+  internal: true
+  raw: true
+  attenuation: 12db
+  update_interval: 2ms
+  filters:
+  - sliding_window_moving_average:
+      window_size: 25
+      send_every: 25
+
+switch:
+- platform: template
+  name: Calibration (turn on, lay on bed for at least 30s, get out of bed, turn off)
+  id: calibration_button
+  icon: mdi:scale-balance
+  optimistic: true
+  retain: false
+  on_turn_on:
+  - lambda: |-
+      id(samples_since_last_cali) = 0;
+      id(manual_cali_detect) = true;
+      id(update_status_message).execute();
+  on_turn_off:
+  - lambda: |-
+      id(update_status_message).execute();
+
+- platform: template
+  name: Send Data to ASC (If you run no internet HA turn this off)
+  id: mqtt_button
+  icon: mdi:cloud-upload-outline
+  entity_category: diagnostic
+  optimistic: true
+  restore_mode: RESTORE_DEFAULT_ON
+  retain: false
+  turn_on_action:
+  - lambda: |-
+      id(mqtt_enable) = true;
+  turn_off_action:
+  - lambda: |-
+      id(mqtt_enable) = false;
+
+button:
+- platform: restart
+  name: SlumberTek Restart
+  id: reset_button
+  entity_category: diagnostic
+
+interval:
+- interval: 50ms
+  then:
+    lambda: |-
+      // Butterworth low-pass filter coefficients for the main signal
+      static float lowPassB[] = {0, 0};  // Numerator coefficients
+      static float lowPassA[] = {0, 0};        // Denominator coefficients
+
+      // Butterworth low-pass filter coefficients for the threshold signal (0.01 Hz cutoff)
+      const float thresholdB[] = {0.00156833, 0.00156833};  // Numerator coefficients
+      const float thresholdA[] = {1.0, -0.99686333};        // Denominator coefficients
+
+      // Variables for the main low-pass filter
+      static float lowPassPrevInput = 0;          // Stores the last input value for low-pass filter
+      static float lowPassPrevOutput = 0;         // Stores the last output value for low-pass filter
+
+      // Variables for the threshold low-pass filter
+      static float thresholdPrevInput = 0;        // Stores the last input value for threshold filter
+      static float thresholdPrevOutput = 0;       // Stores the last output value for threshold filter
+
+      // Long-term event tracking
+      static unsigned long lastEventTime = 0;                             // Time of the last detected event
+      static unsigned long mqttStartUpTimer = millis();
+
+      // Voltage updating data interval
+      static unsigned long intervalTimer = 0;
+      int volt_update_interval_ms = id(volt_update_interval) * 1000; // convert update rate to milliseconds
+      unsigned long currentTime = millis();
+
+      // Off transition validation
+      static unsigned long offValidationStartTime = 0;          // Start time for "off" validation timer
+      static bool validatingOffTransition = false;              // Flag to indicate "off" validation period
+      int offValidationDuration = id(off_validation) * 1000;    // timer for "off" transition, in milliseconds
+
+      static unsigned long onValidationStartTime = 0;           // Start time for "on" validation timer
+      static bool validatingOnTransition = false;               // Flag to indicate "on" validation period
+      int onValidationDuration = id(on_validation) * 1000;      // timer for "on" transition, in milliseconds
+
+      // Calibration variables
+      static float calibrationMax = 0.0;    // Set to minimum possible signal value
+      static float calibrationMin = 3.3;    // Set to maximum possible signal value
+      static bool wasCalibrating = false;
+      static unsigned long calibrationTimer = 0;
+
+      // Fixed threshold limits
+      float fixedEmptyBedLimit = id(empty_bed_limit_g);         // Fixed Empty bed threshold
+      float fixedFullBedLimit = id(full_bed_limit_g);         // Fixed Full bed threshold
+
+      // Dynamic thresholds
+      float dynamicEmptyBedThreshold;   // Empty bed dynamic threshold
+      float dynamicFullBedThreshold;   // Full bed dynamic threshold
+
+      static bool startUpFlag = true;
+      static int delay_for_GPIO0_Read = 0;
+      if (delay_for_GPIO0_Read < 1) {
+        delay_for_GPIO0_Read++;
+        return;  // Skip the first loop
+      }
+
+      // Start up values for signal and threshold filters
+      if (startUpFlag) {
+        // Initialize filters with the first input value
+        float initialVoltage = id(GPIO0_Reading).state * (3.3 / 4095.0); // Convert from raw counts to Voltage
+        //float initialVoltage = analogRead(analogPin) * (3.3 / 4095.0);
+        lowPassPrevInput = initialVoltage;
+        lowPassPrevOutput = initialVoltage;
+        thresholdPrevInput = initialVoltage;
+        thresholdPrevOutput = initialVoltage;
+
+        id(reset_counter) += 1;
+        if(id(reset_counter) > 1000) {id(reset_counter) = 0;}
+        id(reset_counter_sensor).publish_state(id(reset_counter));
+        id(update_status_message).execute();
+
+        // I find that restoring values to numbers can be flaky, so I do this for good measure
+        id(full_bed_sensitivity_number).publish_state(id(full_bed_sensitivity_threshold));
+        id(empty_bed_sensitivity_number).publish_state(id(empty_bed_sensitivity_threshold));
+        id(visible_midpoint).publish_state(id(midpoint_g));
+        id(filter_change_number).publish_state(id(filter_amount));
+        id(auto_cali_trigger_number).publish_state(id(auto_cali_triggering_sensitivity));
+        id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+        id(empty_bed_limit_voltage_adjuster).publish_state(id(empty_bed_adjuster_g));
+        id(full_bed_limit_voltage_adjuster).publish_state(id(full_bed_adjuster_g));
+        id(update_interval_number).publish_state(id(volt_update_interval));
+        id(on_validation_number).publish_state(id(on_validation));
+        id(off_validation_number).publish_state(id(off_validation));
+      }
+
+      float voltage = id(GPIO0_Reading).state * (3.3/4095.0); // Convert from raw counts to Voltage
+      //ESP_LOGD("interval_50ms", "voltage from id(GPIO0_Reading).state: %.3f", voltage);
+
+      // Step 2: Apply the low-pass filter to the main signal
+      // Set coefficients based on filter_amount
+      if (id(filter_amount) == 1) {  // 0.5 Hz cutoff
+        lowPassB[0] = 0.07295966; lowPassB[1] = 0.07295966;
+        lowPassA[0] = 1.0;         lowPassA[1] = -0.85408069;
+      } else if (id(filter_amount) == 2) {  // 0.1 Hz cutoff
+        lowPassB[0] = 0.01546629; lowPassB[1] = 0.01546629;
+        lowPassA[0] = 1.0;         lowPassA[1] = -0.96906742;
+      } else {  // 0.05 Hz cutoff
+        lowPassB[0] = 0.00779294; lowPassB[1] = 0.00779294;
+        lowPassA[0] = 1.0;         lowPassA[1] = -0.98441413;
+      }
+
+      float lowPassOutput = lowPassB[0] * voltage + lowPassB[1] * lowPassPrevInput - lowPassA[1] * lowPassPrevOutput;
+      lowPassPrevInput = voltage;
+      lowPassPrevOutput = lowPassOutput;
+
+      // Step 3: Apply the low-pass filter to the voltage signal for the threshold
+      float thresholdSignal = thresholdB[0] * voltage + thresholdB[1] * thresholdPrevInput - thresholdA[1] * thresholdPrevOutput;
+      thresholdPrevInput = voltage;
+      if (thresholdSignal < fixedFullBedLimit) {
+        thresholdPrevOutput = fixedFullBedLimit;
+      } else if (thresholdSignal > fixedEmptyBedLimit) {
+        thresholdPrevOutput = fixedEmptyBedLimit;
+      } else {
+        thresholdPrevOutput = thresholdSignal;
+      }      
+
+      // Step 4: Update Empty bed dynamic threshold (out of bed detection threshold)
+      if (id(empty_bed_sensitivity_threshold) == 0 ) {
+        dynamicEmptyBedThreshold = fixedEmptyBedLimit;
+      } else {
+        float dynamicThresholdOffset = (10 - id(empty_bed_sensitivity_threshold)) * id(sensitivity_base);
+        dynamicEmptyBedThreshold = 
+        (thresholdSignal < fixedFullBedLimit) ? fixedFullBedLimit + dynamicThresholdOffset :
+        (thresholdSignal + dynamicThresholdOffset > fixedEmptyBedLimit) ? fixedEmptyBedLimit :
+        (thresholdSignal + dynamicThresholdOffset);
+      }
+
+      // Step 5: Update Full bed dynamic threshold (in bed detection threshold)
+      if (id(full_bed_sensitivity_threshold) == 0 ) {
+        dynamicFullBedThreshold = fixedFullBedLimit;
+      } else {
+      float dynamicThresholdOffset = (10 - id(full_bed_sensitivity_threshold)) * id(sensitivity_base);
+        dynamicFullBedThreshold = 
+        (thresholdSignal - dynamicThresholdOffset < fixedFullBedLimit) ? fixedFullBedLimit :
+        (thresholdSignal > fixedEmptyBedLimit) ? fixedEmptyBedLimit - dynamicThresholdOffset :
+        (thresholdSignal - dynamicThresholdOffset);
+      }
+
+      // Step 6: Check for calibration and Handle "on" and "off" states
+      if (id(calibration_button).state) {
+        id(sample_index) = 0;  // Reset sampleIndex when calibration starts
+        id(array_full) = false; // Sets the auto calibration to wait for 24hrs of data collection ver0.1.4
+        id(first_ever_cali) = true; // disables warning about no previous calibration
+        
+        // only publish calibration at a rate of once a second
+        if (currentTime - calibrationTimer >= 1000) {
+
+          // Calibration mode: Track max and min values
+          if (lowPassOutput > calibrationMax) {
+            calibrationMax = lowPassOutput;
+            float truncatedCaliValue = ((int)(calibrationMax * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+            id(empty_bed_limit_voltage).publish_state(truncatedCaliValue);
+            //ESP_LOGD("calibration", "New empty bed threshold: %.3f", truncatedCaliValue);
+          }
+          if (lowPassOutput < calibrationMin) {
+            calibrationMin = lowPassOutput;
+            float truncatedCaliValue = ((int)(calibrationMin * 1000)) / 1000.0; // need to cut down to only 3 decimals  
+            id(full_bed_limit_voltage).publish_state(truncatedCaliValue);
+            //ESP_LOGD("calibration", "New full bed threshold: %.3f", truncatedCaliValue);
+          }
+          calibrationTimer = currentTime;
+        }
+      } else {
+        if (id(Bed_binary_trigger).state) {
+          // Immediate "off" if low-pass signal exceeds the dynamic empty bed threshold
+          if (lowPassOutput > dynamicEmptyBedThreshold) {
+            if (!validatingOffTransition) {
+              // Start the validation timer
+              offValidationStartTime = millis();
+              validatingOffTransition = true;
+            } else if (millis() - offValidationStartTime >= offValidationDuration) {
+              // Timer expired: Turn "off"
+              id(sensorBoolValue) = false;
+              id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+              offValidationStartTime = 0;
+              validatingOffTransition = false;
+              lastEventTime = millis();
+            }
+          } else {
+            // Cancel validation if signal drops below dynamic empty bed threshold
+            offValidationStartTime = 0;
+            validatingOffTransition = false;
+          }
+        } else {
+          // Transition to "on" if low-pass signal crosses dynamic full bed threshold
+          if (lowPassOutput < dynamicFullBedThreshold) {
+            if (!validatingOnTransition) {
+              // Start the validation timer
+              onValidationStartTime = millis();
+              validatingOnTransition = true;
+            } else if (millis() - onValidationStartTime >= onValidationDuration) {
+              // Timer expired: Turn "on"
+              id(sensorBoolValue) = true;
+              id(Bed_binary_trigger).publish_state(id(sensorBoolValue));
+              onValidationStartTime = 0;
+              validatingOnTransition = false;
+              lastEventTime = millis();
+            }
+          } else {
+            // Cancel validation if signal rises above dynamic full bed threshold
+            onValidationStartTime = 0;
+            validatingOnTransition = false;
+          }
+        }
+      }
+
+      // Step 7: Finalize Calibration if button is turned off
+      if (!id(calibration_button).state && wasCalibrating) {
+
+        // Store these values for manipulation of midpoint
+        id(midpoint_pressure_max_g) = calibrationMax; 
+        id(midpoint_pressure_min_g) = calibrationMin;
+
+        // Calculate midpoint around largest gap and use that to define the spacing of the limit_adjuster_amount
+        float largestGap = calibrationMax - calibrationMin;        
+        float newMidpoint = calibrationMin + (largestGap * id(midpoint_adjuster_g)) / 100.0; // largestGap is multiplied by midpoint_adjuster (which is a percent)
+        id(limit_adjuster_amount) = (largestGap / 2.0) / 10.0; // each limit_adjuster_amount unit is 10% of half of the largestGap
+
+        // Update midpoint_g
+        id(midpoint_g) = ((int)(newMidpoint * 1000)) / 1000.0; // Truncates to 3 decimals
+        id(visible_midpoint).publish_state(id(midpoint_g));
+
+        // Create new empty bed and full bed thresholds
+        id(bed_adjuster_script).execute();
+
+        calibrationMax = 0.0;  // Reset for future calibration
+        calibrationMin = 3.3;
+        wasCalibrating = false;
+      } else if (id(calibration_button).state) {
+        wasCalibrating = true;
+      }
+
+      // Step 9: Update voltage output only if the value has changed enough, helps to reduce sending unnecessary data to HA or MQTT
+      static float prevLowPassOutputPub = lowPassOutput;
+      static float prevDynFullBedThresPub = dynamicFullBedThreshold;
+      static float prevDynEmptyBedThresPub = dynamicEmptyBedThreshold;
+      float signalChangeRequirement = 0.004; // roughly 5 counts of 3.3/4095 resolution
+      if ( id(volt_update_interval) > 0) {
+          if (currentTime - intervalTimer >= volt_update_interval_ms || startUpFlag) {
+            // Only publish the new value 
+            if (abs(lowPassOutput - prevLowPassOutputPub) >= signalChangeRequirement || startUpFlag) {
+              prevLowPassOutputPub = lowPassOutput;
+              id(visible_pressure_voltage).publish_state(lowPassOutput);
+              ESP_LOGD("interval_50ms", "Pressure Voltage update: %.3f", lowPassOutput);
+            }
+            if (abs(dynamicFullBedThreshold - prevDynFullBedThresPub) >= signalChangeRequirement || startUpFlag) {
+              prevDynFullBedThresPub = dynamicFullBedThreshold;
+              id(visible_dynOnThreshold).publish_state(dynamicFullBedThreshold);
+              ESP_LOGD("interval_50ms", "Dynamic Full Bed Threshold update: %.3f", dynamicFullBedThreshold);
+            }
+            if (abs(dynamicEmptyBedThreshold - prevDynEmptyBedThresPub) >= signalChangeRequirement || startUpFlag) {
+              prevDynEmptyBedThresPub = dynamicEmptyBedThreshold;
+              id(visible_dynOffThreshold).publish_state(dynamicEmptyBedThreshold);
+              ESP_LOGD("interval_50ms", "Dynamic Empty Bed Threshold update: %.3f", dynamicEmptyBedThreshold);
+            }
+            intervalTimer = currentTime;
+          }
+        }
+
+      // Step 10: Update persistent variables
+      id(filteredSignal) = lowPassOutput;
+      id(dynOnThresholdID) = dynamicFullBedThreshold;
+      id(dynOffThresholdID) = dynamicEmptyBedThreshold;
+      startUpFlag = false;
+
+      // Step 11: Check to enable MQTT 45 seconds after startup
+      if(currentTime - mqttStartUpTimer > 45000){
+        if(id(mqtt_enable) && !id(mqtt_client).is_connected()){
+          id(mqtt_client).enable();
+          id(mqtt_button).publish_state(id(mqtt_enable));
+        }
+        if (!id(mqtt_enable) && id(mqtt_client).is_connected()){
+          id(mqtt_client).disable();
+          id(mqtt_button).publish_state(id(mqtt_enable));
+        }
+      }
+
+- interval: 30min
+  then:
+    lambda: |-
+      int sampleIndex = id(sample_index);  // Access global sampleIndex
+
+      // Debugging: Indicate entering the interval loop
+      //ESP_LOGD("interval_30min", "Processing 30min interval loop");
+
+      // Step 1: Collect the current lowPassOutput and store it in the global buffer
+      id(daily_samples)[sampleIndex] = id(filteredSignal);
+      //ESP_LOGD("interval_30min", "Collected sample at index %d: %.3f", sampleIndex, id(filteredSignal));
+
+      sampleIndex++;
+      if (sampleIndex >= 48) {
+        id(sample_index) = 0;
+        id(array_full) = true;
+        //ESP_LOGD("interval_30min", "Sample buffer full, proceeding to processing");
+      } else {
+        id(sample_index) = sampleIndex; // Update the global sample index
+      }
+
+      // Increment the sample counter
+      id(samples_since_last_cali) += 1;
+
+      // Step 2: Re-evaluate thresholds if auto-calibrate is active, the full 24-hour buffer is filled, and the selected number of hours (auto_cal_interval) have passed
+      if ( id(auto_cal_interval) > 0 ) {
+        if (id(array_full) && (id(samples_since_last_cali) >= id(auto_cal_interval)*2 )) {
+          id(first_ever_cali) = true; // disables warning about no previous calibration
+          id(manual_cali_detect) = false; // auto-calibration is now active
+          id(samples_since_last_cali) = 0;
+
+          // Copy and then sort a holder array in ascending order
+          float sortedSamples[48];
+          std::copy(std::begin(id(daily_samples)), std::end(id(daily_samples)), sortedSamples);
+          std::sort(sortedSamples, sortedSamples + 48);
+
+          // Step 3: Biggest gap, ignoring possible outliers at the top and bottom by removing top and bottom 3 values
+          float largestGap = sortedSamples[44] - sortedSamples[3];
+
+          // Step 4: Check if the largest gap meets the minimum gap requirement
+          //float autoCaliTriggerPercentages[] = {2.0, 1.5, 1.0, 0.75, 0.5}; // 200%, 150%, 100%, 75%, 50%
+          float minGap = (id(empty_bed_limit_g) - id(full_bed_limit_g)) * id(auto_cali_triggering_sensitivity)/100.0;
+          if (largestGap < minGap) {
+            //ESP_LOGD("interval_30min", "Largest gap %.3f is below minGap %.3f. Skipping threshold update.", largestGap, minGap);
+            return;  // No significant gap; likely no bed presence data
+          }
+
+          // Store these values for manipulation of midpoint
+          id(midpoint_pressure_max_g) = sortedSamples[44]; 
+          id(midpoint_pressure_min_g) = sortedSamples[3];
+
+          // Step 5: Calculate midpoint around largest gap and use that to define the spacing of the limit_adjuster_amount
+          float newMidpoint = sortedSamples[3] + (largestGap * id(midpoint_adjuster_g)) / 100.0; // largestGap is multiplied by midpoint_adjuster (which is a percent)
+          id(limit_adjuster_amount) = (largestGap / 2.0) / 10.0; // each limit_adjuster_amount unit is 10% of half of the largestGap
+
+          // Step 6: Adjust midpoint based on previous midpoint
+          float alpha = 0.85;  // Weight for the new value
+          float updatedMidpoint = alpha * newMidpoint + (1 - alpha) * id(midpoint_g);
+          id(midpoint_g) = ((int)(updatedMidpoint * 1000)) / 1000.0; // Truncates to 3 decimals
+          id(visible_midpoint).publish_state(id(midpoint_g));
+
+          // Create new empty bed and full bed thresholds
+          id(bed_adjuster_script).execute();
+        }
+        id(update_status_message).execute();
+      }
+
+script:
+- id: update_status_message
+  mode: queued
+  then:
+  - lambda: |-
+      if (!id(first_ever_cali) && !id(array_full)) {
+        char buf[128];
+        int hours_collected = id(samples_since_last_cali) / 2;  // 2 samples per hour
+        int hours_remaining = 24 - hours_collected;
+
+        snprintf(buf, sizeof(buf), "No detected calibration, please use the Calibration button or wait %d hrs for the auto-calibration to initialize", hours_remaining);
+        id(calibration_status_message).publish_state(std::string(buf));
+      } else if (id(auto_cal_interval) == 0) {
+        id(calibration_status_message).publish_state("Auto-calibration disabled");
+      } else if (id(manual_cali_detect)) {
+        char buf[128];
+        int hours_collected = id(samples_since_last_cali) / 2;  // 2 samples per hour
+        int hours_remaining = 24 - hours_collected;
+        snprintf(buf, sizeof(buf), "Manual calibration detected, collecting %d more hours of data before starting auto-calibration", hours_remaining);
+        id(calibration_status_message).publish_state(std::string(buf));
+      } else {
+        char buf[128];
+        int hours_collected = id(samples_since_last_cali) / 2;  // samples to hours
+        int hours_remaining = id(auto_cal_interval) - hours_collected;
+
+        if (hours_remaining < 1) {
+          snprintf(buf, sizeof(buf), "Auto-calibration active, will calibrate on next data collection (<30min), last calibration %d hours ago", hours_collected);
+        } else {
+          snprintf(buf, sizeof(buf), "Auto-calibration active, %d hours until next calibration, last calibration %d hours ago", hours_remaining, hours_collected);
+        }
+
+        id(calibration_status_message).publish_state(std::string(buf));
+      }
+
+- id: bed_adjuster_script
+  mode: queued
+  then:
+  - lambda: |-
+      id(empty_bed_limit_g) = id(midpoint_g) + (id(limit_adjuster_amount) * id(empty_bed_adjuster_g)) / 10.0;
+      id(full_bed_limit_g) = id(midpoint_g) - (id(limit_adjuster_amount) * id(full_bed_adjuster_g)) / 10.0;
+      id(sensitivity_base) = (id(empty_bed_limit_g) - id(full_bed_limit_g)) / 10.0; // update 10 steps, 
+      //ESP_LOGD("script", "sensitivity_base %.3f.", id(sensitivity_base));
+      id(empty_bed_limit_voltage).publish_state(id(empty_bed_limit_g));
+      id(full_bed_limit_voltage).publish_state(id(full_bed_limit_g));
